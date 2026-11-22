@@ -79,7 +79,8 @@ public class KillclogService
 	private volatile long indexFailedAt = 0;
 	private final Map<String, CompletableFuture<Set<String>>> indexInFlight = new ConcurrentHashMap<>();
 
-	// Proof-view cache, keyed by lowercase rsn. Same TTL trio as the providers.
+	// Proof views, cached by lowercase name and kept as the other sites' answers are: a success, a not-found and a
+	// failure each for their own time.
 	private final HttpUtil.Lane<ClogResult> clogs = new HttpUtil.Lane<>(breaker);
 
 	// Personal bests per player, filled by every successful proof-view fetch whichever source wins the log. Keys are

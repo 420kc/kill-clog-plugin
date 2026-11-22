@@ -524,7 +524,7 @@ public abstract class TitleTooltip extends NativeTooltip
 		g2.setFont(FontManager.getRunescapeSmallFont());
 		FontMetrics fm = g2.getFontMetrics();
 
-		// Each line a label in orange and its value in its own colour, then any pair after it.
+		// Each line a label in orange and its value in its own color, then any pair after it.
 		subtitleIconBounds = null;
 		for (InfoLine line : headerLines())
 		{

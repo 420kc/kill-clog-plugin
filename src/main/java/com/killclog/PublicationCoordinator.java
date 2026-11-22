@@ -27,7 +27,7 @@ import net.runelite.client.hiscore.HiscoreSkill;
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 final class PublicationCoordinator
 {
-	/** The panel's side of the flow. Every call arrives on the EDT. */
+	/** The panel's side of the flow. Every call arrives on the Swing thread. */
 	interface Feedback
 	{
 		void showSyncProgress(boolean manual, String text, boolean autoClear);

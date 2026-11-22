@@ -71,8 +71,8 @@ final class PanelData
 	// The Clue Summary's rare rows in its order, one per collection (clue-rare-rows.tsv).
 	static final List<RareRow> RARE_ROWS = rareRows(CatalogTsv.rows(PanelData.class, "clue-rare-rows.tsv", 8));
 
-	// Clue tier -> collection-log category key, derived from the enum name:
-	// CLUE_SCROLL_BEGINNER -> beginner_treasure_trails.
+	// Each clue tier's Collection Log page, named from the enum's own name: CLUE_SCROLL_BEGINNER is
+	// beginner_treasure_trails.
 	static final Map<HiscoreSkill, String> CLUE_CATEGORIES = new LinkedHashMap<>();
 	static
 	{

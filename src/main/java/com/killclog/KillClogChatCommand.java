@@ -33,8 +33,8 @@ class KillClogChatCommand
 	static final String COMMAND_KC = "!kc";
 	static final String COMMAND_LOG_COMPATIBILITY = "!log";
 
-	// The channels ChatCommandManager itself dispatches on; the !kc item path
-	// reads raw events, so it mirrors the same set.
+	// The chat types ChatCommandManager itself answers; !kc with an item reads raw chat events, so it keeps to the same
+	// ones.
 	private static final Set<ChatMessageType> PLAYER_CHAT_TYPES = EnumSet.of(
 		ChatMessageType.PUBLICCHAT, ChatMessageType.MODCHAT,
 		ChatMessageType.FRIENDSCHAT, ChatMessageType.PRIVATECHAT,
@@ -258,9 +258,9 @@ class KillClogChatCommand
 	}
 
 	/**
-	 * !kclog handler: renders obtained items.
-	 * Runs on the executor RuneLite shares with every plugin (ChatCommandManager.registerCommandAsync), so it only
-	 * asks: the reply is finished when the answers arrive, and UI work jumps to clientThread.
+	 * !kclog: the items obtained. Runs on the executor RuneLite shares with every plugin
+	 * (ChatCommandManager.registerCommandAsync), so it only asks: the reply is finished when the answers arrive, and
+	 * anything drawn goes to the client thread.
 	 */
 	void handle(ChatMessage chatMessage, String message)
 	{

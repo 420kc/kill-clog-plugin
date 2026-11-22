@@ -7,9 +7,7 @@ import lombok.*;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.hiscore.HiscoreSkill;
 
-/**
- * Builds {@link TooltipData} objects from a {@link ClogResult} without touching any UI.
- */
+/** Builds each card's {@link TooltipData} from a {@link ClogResult}; it touches no widget. */
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 final class TooltipDataBuilder
 {

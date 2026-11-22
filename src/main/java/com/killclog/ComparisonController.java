@@ -68,7 +68,7 @@ public class ComparisonController
 		/** Apply an account-type badge (clog-mode + GIM + standard hiscore). */
 		void applyBadge(JLabel label, @Nullable AccountDisplay display);
 
-		/** The primary player's identity as the panel keeps it, or null before it has one. */
+		/** The looked-up player's identity as the panel keeps it, or null before it has one. */
 		@Nullable
 		AccountDisplay primaryIdentity();
 
@@ -100,7 +100,7 @@ public class ComparisonController
 	private boolean comparisonMode;
 	private ComparedPlayer compared = ComparedPlayer.EMPTY;
 
-	/** One committed identity; optional CA enrichment replaces this whole value. */
+	/** One rival as committed; when their Combat Achievements arrive, a new one replaces it whole. */
 	private static final class ComparedPlayer
 	{
 		static final ComparedPlayer EMPTY = new ComparedPlayer(-1, null, null, null, null, null);
@@ -143,7 +143,7 @@ public class ComparisonController
 	private static final String COMPARE_CELL_KEY = "killclog.compare.cell";
 
 	/**
-	 * A cell in a comparison: both players' values, and the colour each takes while the cell is hovered, held as one
+	 * A cell in a comparison: both players' values, and the color each takes while the cell is hovered, held as one
 	 * so a cell is never half in a comparison.
 	 */
 	@RequiredArgsConstructor(access = AccessLevel.PRIVATE)
@@ -154,7 +154,7 @@ public class ComparisonController
 		private final String blueHover;
 		private final String redHover;
 
-		/** The two values stacked, each in its player's colour, or its completion colour while hovered. */
+		/** The two values stacked, each in its player's color, or its completion color while hovered. */
 		String html(boolean hovering)
 		{
 			return "<html><div style='text-align:center;'>"
@@ -242,8 +242,8 @@ public class ComparisonController
 	}
 
 	/**
-	 * Exit comparison mode and clear red-side state. Listener handles the UI
-	 * restoration (search bar reset, cell + summary-bar re-render to single-player mode).
+	 * End the comparison and forget the rival. The listener puts the panel back: the search bar, and the cells and
+	 * header for one player.
 	 */
 	public void exit()
 	{
@@ -251,7 +251,7 @@ public class ComparisonController
 		listener.onComparisonExit();
 	}
 
-	/** Quiet shutdown: invalidate pending and settled callbacks without UI restoration. */
+	/** End it quietly: nothing asked or answered so far may call back, and the panel is told nothing. */
 	void reset()
 	{
 		comparisonMode = false;
@@ -261,12 +261,10 @@ public class ComparisonController
 	}
 
 	/**
-	 * Begin a red-side lookup. Runs the parallel hiscore + clog + CA fan-out under
-	 * a version-stamp guard and dispatches UI updates through listener events.
-	 *
-	 * @param player the red-side player entered in the panel search bar
-	 * @param localRsn active local player, used for self-aware search flavor
-	 * @param localAccountType RuneLite's own type for the local player, worn when the red player is you
+	 * Look up a rival: their hiscore, log and Combat Achievements, each stamped so a newer lookup's answers win, with
+	 * every step told to the listener. {@code player} is the name typed in the search bar; {@code localRsn} is the
+	 * player logged in, for the search line's wording about yourself; {@code localAccountType} is RuneLite's own type
+	 * for them, worn when the rival is you.
 	 */
 	public void doCompareLookup(String player, @Nullable String localRsn, @Nullable AccountType localAccountType)
 	{
@@ -319,7 +317,7 @@ public class ComparisonController
 			setCompareStatus(SearchMessages.COMPARE_SEARCH, KillClogColors.TEXT_DIM, blueName, blueName);
 		}
 
-		// CA lookup runs in parallel with hiscore+clog
+		// The Combat Achievements are asked alongside the hiscore and the log.
 		fanout.fetchCa(redPlayer, thisLookup, ca ->
 		{
 			pending.ca = ca;
@@ -465,7 +463,7 @@ public class ComparisonController
 		return tip;
 	}
 
-	/** Both players' own cards side by side as one, each under its player's name and colour. */
+	/** Both players' own cards side by side as one, each under its player's name and color. */
 	public JToolTip wrapSideBySide(JComponent owner, JToolTip blueTip, JToolTip redTip)
 	{
 		TitleTooltip.scrollTogether(blueTip, redTip);
@@ -508,7 +506,7 @@ public class ComparisonController
 	}
 
 	/**
-	 * While a comparison cell is hovered, its two values wear each player's completion colours in place of blue and
+	 * While a comparison cell is hovered, its two values wear each player's completion colors in place of blue and
 	 * red. Every cell with two values takes it: bosses, activities and skills.
 	 */
 	public void installCompareCellHover(JPanel cell, JLabel label)
@@ -567,7 +565,7 @@ public class ComparisonController
 	}
 
 	/**
-	 * The header in a comparison: both names in their colours, each with its badge. Out of one, the one player's again.
+	 * The header in a comparison: both names in their colors, each with its badge. Out of one, the one player's again.
 	 */
 	public void updateInfoBar()
 	{
@@ -586,7 +584,7 @@ public class ComparisonController
 			tooltipController.setTooltipText(clogInfoLabel, " ");
 			clogInfoLabel.setIcon(null);
 			clogInfoLabel.setHorizontalAlignment(JLabel.RIGHT);
-			// The primary name keeps the identity the panel resolved, RuneLite's own type included.
+			// The looked-up player's name keeps the identity the panel settled on, RuneLite's own type included.
 			AccountDisplay blue = renderTarget.primaryIdentity();
 			renderTarget.applyBadge(playerName, blue != null ? blue
 				: LookupQueries.accountDisplay(lookupSession.getHiscoreResult(), lookupSession.getNativeClogResult()));

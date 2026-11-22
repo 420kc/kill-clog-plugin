@@ -41,7 +41,7 @@ final class StatusMessage
 		return kind == Kind.HOVER || kind == Kind.NOTICE;
 	}
 
-	/** Runs the action once on the EDT after the delay unless {@link #cancelExpiry} comes first. */
+	/** Runs the action once on the Swing thread after the delay unless {@link #cancelExpiry} comes first. */
 	void expireAfter(int delayMs, Runnable action)
 	{
 		cancelExpiry();

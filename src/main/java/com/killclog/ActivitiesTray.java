@@ -80,7 +80,7 @@ public class ActivitiesTray
 		this.separator = new JPanel();
 		separator.setBackground(ColorScheme.DARK_GRAY_COLOR);
 		separator.setPreferredSize(new Dimension(0, SEPARATOR_HEIGHT));
-		// Its colours are read as the mouse comes and goes, so they follow the panel's background whatever it is now.
+		// Its colors are read as the mouse comes and goes, so they follow the panel's background whatever it is now.
 		separator.addMouseListener(new MouseAdapter()
 		{
 			@Override

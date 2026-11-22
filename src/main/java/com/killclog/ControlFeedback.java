@@ -2,7 +2,7 @@ package com.killclog;
 
 import lombok.*;
 
-/** Panel feedback for one killclog.com control, the chalice or the character. All access stays on the EDT. */
+/** Panel feedback for one killclog.com control, the chalice or the character. All of it on the Swing thread. */
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 final class ControlFeedback
 {

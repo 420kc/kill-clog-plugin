@@ -22,7 +22,7 @@ final class ClogUnlockParser
 		"^(.+?) received a new collection log item: (.+?)(?: \\((\\d+)/(\\d+)\\))?$");
 
 	// The game's kill-count message, in RuneLite's own pattern: kills, harvests, laps, completions, successes and
-	// "subdued", with their colour tags. Each boss's latest one says which kill an item arrived on (LiveClogSync).
+	// "subdued", with their color tags. Each boss's latest one says which kill an item arrived on (LiveClogSync).
 	private static final Pattern KILLCOUNT_MESSAGE = Pattern.compile(
 		"Your (?<pre>completion count for |subdued |completed )?(?:<col=[0-9a-f]{6}>)?(?<boss>.+?)(?:</col>)? "
 			+ "(?<post>(?:(?:kill|harvest|lap|completion|success|Total Ticket) )?(?:count )?)is: ?"

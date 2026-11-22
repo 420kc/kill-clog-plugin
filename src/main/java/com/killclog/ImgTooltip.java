@@ -6,9 +6,9 @@ import lombok.Setter;
 import net.runelite.client.game.ItemManager;
 
 /**
- * Sprite grid tooltip for collection log data: the header (title, counts, rank) via TitleTooltip, the band the
- * hovered item is named in, then the item grid at full size. A grid taller than the rows {@link CardBody#WINDOW}
- * holds scrolls, a row a notch.
+ * The card of a Collection Log page: the header (title, counts, rank) from TitleTooltip, the band the hovered item is
+ * named in, then the items at full size. A grid taller than the rows {@link CardBody#WINDOW} holds scrolls, a row a
+ * notch.
  */
 public class ImgTooltip extends TitleTooltip
 {

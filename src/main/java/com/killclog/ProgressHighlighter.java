@@ -45,7 +45,7 @@ final class ProgressHighlighter
 		}
 		colorClueTiers(hiscoreResult, clogResult);
 
-		// Clue All aggregates across all six tier categories.
+		// Clue All adds up the six tiers' pages.
 		JLabel clueAllLabel = activityLabels.get(HiscoreSkill.CLUE_SCROLL_ALL);
 		int[] all = new int[2];
 		for (String cat : PanelData.CLUE_CATEGORIES.values())
@@ -108,7 +108,7 @@ final class ProgressHighlighter
 
 	private void colorByCompletion(JLabel label, String category, ClogResult clogResult)
 	{
-		// KC exists but no clog data was found for this category: the empty colour.
+		// A kill count with no log for its page: the empty color.
 		int[] counts = ClogHelper.clogCounts(category, clogResult);
 		label.setForeground(counts == null ? config.emptyClogColor() : ClogHelper.clogColor(counts[0], counts[1], config));
 	}

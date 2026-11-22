@@ -3,7 +3,7 @@ package com.killclog;
 import lombok.*;
 
 /**
- * How skill cells are coloured, as the setting names it.
+ * How skill cells are colored, as the setting names it.
  */
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 public enum SkillColorMode

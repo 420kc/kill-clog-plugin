@@ -72,7 +72,7 @@ public class LookupSession
 	private int localClogRevision;
 	private UnaryOperator<HiscoreResult> rankView = UnaryOperator.identity();
 
-	/** Longest a finished hiscore waits for its clog before showing uncoloured. */
+	/** Longest a finished hiscore waits for its clog before showing uncolored. */
 	static final int CLOG_HOLD_MS = 2500;
 	private boolean clogSettled;
 	@Nullable private Runnable heldReveal;
@@ -162,8 +162,8 @@ public class LookupSession
 
 		listener.onLookupStart(player, isSelf, isFirstSelfGreeting);
 
-		// CA tier fetch runs in parallel with the hiscore/clog fan-out (and through the cache
-		// path), independent of either. RuneProfileService owns its own freshness + dedup.
+		// The Combat Achievements are asked alongside the hiscore and the log (and on the cached path), waiting on
+		// neither. RuneProfileService keeps its own cache and never asks twice at once.
 		fanout.fetchCa(player, thisLookup, ca ->
 		{
 			caResult = ca;
@@ -210,8 +210,8 @@ public class LookupSession
 		{
 			if (result == null)
 			{
-				// Invalidate the still-in-flight clog/CA lanes: a not-found
-				// must not paint partial data afterwards.
+				// Nothing still in the air for the log or the Combat Achievements may answer: a player not found must
+				// not show part of one afterwards.
 				adoptState(null, null, null, null);
 				listener.onNotFound(player);
 				return;
@@ -274,8 +274,8 @@ public class LookupSession
 	}
 
 	/**
-	 * Show a finished hiscore together with its log, so cells never paint white and recolour a moment later. A slow
-	 * source delays it by at most {@link #CLOG_HOLD_MS}; after that the hiscore shows alone and the log colours it when
+	 * Show a finished hiscore together with its log, so cells never paint white and recolor a moment later. A slow
+	 * source delays it by at most {@link #CLOG_HOLD_MS}; after that the hiscore shows alone and the log colors it when
 	 * it arrives.
 	 */
 	private void revealWithClog(int thisLookup, boolean clogReady, Runnable reveal)
@@ -325,7 +325,7 @@ public class LookupSession
 		heldLookup = -1;
 	}
 
-	/** Update the displayed self log on the EDT without restarting any lookup lanes. */
+	/** Show your own log as it is now, on the Swing thread, with no new lookup. */
 	void refreshLocalClog(String player, @Nullable String localRsn)
 	{
 		if (!RsnInputPolicy.sameName(localRsn, player) || !RsnInputPolicy.sameName(currentLookupRsn, player)) return;

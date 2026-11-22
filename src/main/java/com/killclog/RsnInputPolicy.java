@@ -6,7 +6,7 @@ import javax.annotation.Nullable;
 import net.runelite.api.*;
 import net.runelite.client.util.Text;
 
-/** RSN shape validation for names entered in the panel search box. */
+/** What a player's name may be, as typed into the panel's search box, and how two names compare. */
 final class RsnInputPolicy
 {
 	static final int MAX_LENGTH = 12;

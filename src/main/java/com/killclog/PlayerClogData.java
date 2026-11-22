@@ -2,8 +2,7 @@ package com.killclog;
 
 import java.util.*;
 
-/** One player's locally cached collection log, as persisted by
- *  {@link LocalClogCache} (one JSON file per player). */
+/** One player's Collection Log as {@link LocalClogCache} keeps it on disk, a JSON file per player. */
 class PlayerClogData
 {
 	String playerName;

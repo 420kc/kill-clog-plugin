@@ -533,8 +533,8 @@ public class KillClogPlugin extends Plugin
 			chatEmoji.rewrite(event);
 		}
 
-		// !kc <item name> provenance reveal. Boss arguments stay with the
-		// built-in plugin's own "!kc" registration; the handler ignores them.
+		// !kc with an item's name says the kill it arrived on. A boss's name is left to Chat Commands' own "!kc"; the
+		// handler ignores it.
 		LocalClogCache kcCache = world.captureCache();
 		if (kcCache != null)
 		{
@@ -618,8 +618,8 @@ public class KillClogPlugin extends Plugin
 			panel::onWalkComplete, world.settled());
 	}
 
-	// Keep local CA current when a task completes mid-session, and the live
-	// catalog current when the game moves a tier threshold (a CA release).
+	// Keeps the local player's Combat Achievements current when a task completes, and the game's catalog current when a
+	// tier's threshold moves (a Combat Achievement release).
 	@Subscribe
 	public void onVarbitChanged(VarbitChanged event)
 	{
@@ -650,7 +650,7 @@ public class KillClogPlugin extends Plugin
 		}
 	}
 
-	/** Read per-tier CA completed counts from game varbits and persist them for the active player. */
+	/** Read the tasks done in each tier from the game's varbits and keep them for the player logged in. */
 	private boolean captureLocalCa()
 	{
 		if (!world.mainSettled())
@@ -871,8 +871,8 @@ public class KillClogPlugin extends Plugin
 	{
 		if (event.getGroupId() == InterfaceID.COLLECTION)
 		{
-			// Request a full Search walk after the player's log has initialized.
-			// Ordinary visible-category scripts cannot establish a full capture.
+			// Ask for a whole-log walk once the player's log is ready. The script a page runs as it opens is not the
+			// whole log.
 			clogWalk.onCollectionLogOpened(client);
 		}
 
@@ -938,7 +938,7 @@ public class KillClogPlugin extends Plugin
 		}
 	}
 
-	/** The cards' sprites read again (a pack's where one replaces them), then their colours and the character icon. */
+	/** The cards' sprites read again (a pack's where one replaces them), then their colors and the character icon. */
 	private void reloadCardSprites()
 	{
 		CardSprites.load(client, spriteManager);

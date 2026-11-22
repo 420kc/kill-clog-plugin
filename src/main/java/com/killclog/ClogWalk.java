@@ -300,10 +300,10 @@ final class ClogWalk
 		int reportedTotal = Math.max(walk.clogTotal,
 			client.getVarpValue(VarPlayerID.COLLECTION_COUNT_MAX));
 
-		// Group obtained items by category.
+		// The obtained items, by page.
 		Map<String, List<ClogResult.ClogItem>> obtainedByCategory = new HashMap<>();
 
-		// Include empty categories so cacheResult stores the full catalog.
+		// Empty pages too, so cacheResult stores the whole catalog.
 		for (String cat : clogIndex.categoryKeys())
 		{
 			obtainedByCategory.put(cat, new ArrayList<>());

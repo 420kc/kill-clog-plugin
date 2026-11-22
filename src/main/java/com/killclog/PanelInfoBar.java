@@ -110,7 +110,7 @@ final class PanelInfoBar
 
 	/**
 	 * The hamburger: switches the boss area between grid and list views. Its three bars are painted from the bar it
-	 * sits on each time, so they follow that bar's colour whatever it is now.
+	 * sits on each time, so they follow that bar's color whatever it is now.
 	 */
 	private static JLabel buildViewToggle(Runnable toggleBossView)
 	{

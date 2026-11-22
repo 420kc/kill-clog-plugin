@@ -33,7 +33,7 @@ public class RuneProfileService
 	private static final String BASE_URL = "https://api.runeprofile.com/v1/accounts/";
 	private static final String CLOG_SUFFIX = "/collection-log";
 
-	// Shared across the CA and clog lanes. A single success clears it.
+	// Shared by the summary's requests and the log's. One success clears it.
 	private final CircuitBreaker breaker = new CircuitBreaker("RuneProfile");
 
 	private final OkHttpClient httpClient;
@@ -45,7 +45,7 @@ public class RuneProfileService
 	@Inject
 	private CaCatalog caCatalog;
 
-	// Summary lane (CA tiers plus account metadata) and clog lane: independent, same TTLs.
+	// The summary (Combat Achievements and account details) and the log: cached apart, for the same times.
 	private final HttpUtil.Lane<RuneProfileSummary> summaries = new HttpUtil.Lane<>(breaker);
 	private final HttpUtil.Lane<ClogResult> clogs = new HttpUtil.Lane<>(breaker);
 
@@ -58,7 +58,7 @@ public class RuneProfileService
 		breaker.reset();
 	}
 
-	/** Cached CA result for SWR reveal without an API call, or null if none is held. */
+	/** The Combat Achievements already cached for this player, for showing without a request; null if none is held. */
 	public CombatAchievementResult getCached(String playerName)
 	{
 		if (playerName == null)
@@ -203,8 +203,8 @@ public class RuneProfileService
 	}
 
 	/**
-	 * Parse RuneProfile CA rows from either {@code /combat-achievements} ({@code data}) or
-	 * the account summary response ({@code combatAchievements}).
+	 * Reads RuneProfile's Combat Achievement rows, from {@code /combat-achievements} ({@code data}) or from the account
+	 * summary ({@code combatAchievements}).
 	 */
 	CombatAchievementResult parseCombatAchievements(String json)
 	{
@@ -254,13 +254,12 @@ public class RuneProfileService
 	// Collection log provider lane.
 
 	/**
-	 * Look up collection log data from RuneProfile. LookupSession and ComparisonController
-	 * combine this with TempleOSRS and keep the freshest result.
+	 * A player's Collection Log from RuneProfile. LookupSession and ComparisonController combine it with TempleOSRS's
+	 * and keep the fuller log.
 	 *
-	 * <p>Caching mirrors the CA lookup: success TTL, 404 TTL, failure cooldown,
-	 * in-flight dedup. Caches are independent of the CA caches so a CA 404 does
-	 * not suppress a clog lookup (though in practice both will 404 together for
-	 * players not on RuneProfile).
+	 * Cached as the summary is: a success, a 404 and a failure each for their own time, one request per name at once.
+	 * The two caches are apart, so a 404 for the summary never stops the log being asked (though a player not on
+	 * RuneProfile gets a 404 from both).
 	 */
 	public CompletableFuture<ClogResult> lookupClog(String playerName)
 	{
@@ -307,13 +306,14 @@ public class RuneProfileService
 	}
 
 	/**
-	 * Parse the RuneProfile collection-log response into a {@link ClogResult}.
-	 * The collection-log endpoint response shape (confirmed from RuneProfile OpenAPI spec):
+	 * Reads RuneProfile's collection-log answer into a {@link ClogResult}. Its shape, from RuneProfile's OpenAPI spec:
+	 *
 	 * <pre>{@code
 	 * { obtained, total, tabs: [{ name, pages: [{ name, items: [{ id, name, quantity }] }] }] }
 	 * }</pre>
-	 * Items with {@code quantity > 0} are obtained. The page name is normalized through
-	 * the category canon shared with TempleOSRS and the boss grid.
+	 *
+	 * An item with {@code quantity > 0} is obtained. A page's name becomes the plugin's own name for it, the names
+	 * TempleOSRS's pages and the boss grid go by.
 	 */
 	ClogParseOutcome parseCollectionLogOutcome(String playerName, String json,
 		@Nullable AccountType providerAccountType)

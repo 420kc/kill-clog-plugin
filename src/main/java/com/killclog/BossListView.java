@@ -15,7 +15,7 @@ import net.runelite.client.hiscore.HiscoreSkill;
 import net.runelite.client.ui.*;
 
 /**
- * The boss cells as a list, one full-width row per boss in the hiscores' own order: its icon, its name and its coloured
+ * The boss cells as a list, one full-width row per boss in the hiscores' own order: its icon, its name and its colored
  * kill count, opening the same card as its cell. Rows mirror the grid's labels instead of working the values out again:
  * the grid is always built, even while hidden, and each row listens to its grid label's text, color and icon. So
  * whatever writes a label (a search starting, results landing, the completionist highlighter) reaches the list with no
@@ -168,8 +168,8 @@ public class BossListView
 				}
 				break;
 			case "foreground":
-				// The name wears the same color as the kc: completion
-				// gradient when the highlighter is on, soft kc/grey when off.
+				// The name wears the kill count's color: the completion colors when the highlighter is on, the resting
+				// grey when off.
 				row.kc.setForeground(gridLabel.getForeground());
 				row.name.setForeground(gridLabel.getForeground());
 				break;
@@ -234,7 +234,7 @@ public class BossListView
 		field.setSelectionColor(ColorScheme.BRAND_ORANGE_TRANSPARENT);
 		field.setOpaque(false);
 		field.setBorder(null);
-		// Greyscale text like every panel label, not the desktop's ClearType colour fringes.
+		// Greyscale text like every panel label, not the desktop's ClearType color fringes.
 		ClogHelper.antialias(field);
 		field.getDocument().addDocumentListener(new DocumentListener()
 		{
@@ -429,7 +429,7 @@ public class BossListView
 			|| KillClogChatCommand.normalize(boss.getName()).contains(query));
 	}
 
-	/** A row label that routes its tooltip through the grid's boss popup. */
+	/** A row label whose card is its boss's, as the grid's cell opens it. */
 	private static JLabel bossTooltipLabel(HiscoreSkill boss, Cells cells)
 	{
 		JLabel label = new JLabel()

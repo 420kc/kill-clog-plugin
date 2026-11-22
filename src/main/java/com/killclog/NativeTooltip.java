@@ -82,7 +82,7 @@ public abstract class NativeTooltip extends JToolTip
 
 	/**
 	 * The rail's track: the pack's when its thumb is the pack's, else a darker shade of the thumb, so the two never
-	 * meet in one colour whatever the dividers are.
+	 * meet in one color whatever the dividers are.
 	 */
 	static Color railTrackFor(Color thumb)
 	{

@@ -246,7 +246,7 @@ public class Cells
 	}
 
 	/**
-	 * Every cell back to how it rests before a lookup: dashes in the resting colour, the resting card, each boss's own
+	 * Every cell back to how it rests before a lookup: dashes in the resting color, the resting card, each boss's own
 	 * icon, and no card data kept. The panel resets its own header alongside.
 	 */
 	public void reset()
@@ -266,7 +266,7 @@ public class Cells
 	}
 
 
-	/** A count cell's number in its colour, or a grey "--" without one: every count cell on the panel. */
+	/** A count cell's number in its color, or a grey "--" without one: every count cell on the panel. */
 	static void showCount(JLabel label, int count, @Nullable Color color)
 	{
 		label.setText(ClogHelper.pad(ClogHelper.countText(count)));

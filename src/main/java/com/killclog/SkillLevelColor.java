@@ -4,7 +4,7 @@ import java.awt.Color;
 import java.util.*;
 
 /**
- * A skill cell's level colour: a light grey before a sync, else the setting's mode (one skill colour, the skill's
+ * A skill cell's level color: a light grey before a sync, else the setting's mode (one skill color, the skill's
  * Skill Clog progress, or Level Progression).
  */
 final class SkillLevelColor
@@ -36,7 +36,7 @@ final class SkillLevelColor
 		return levelColor(level, virtual, config);
 	}
 
-	/** Level Progression: the Progress Highlighter colour of the highest tier the level has reached. */
+	/** Level Progression: the Progress Highlighter color of the highest tier the level has reached. */
 	static Color levelColor(int level, boolean virtual, KillClogConfig config)
 	{
 		Color[] colors = {config.emptyClogColor(), config.inProgressClogColor(), config.missing1Color(),

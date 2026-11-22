@@ -27,8 +27,8 @@ class TooltipController
 
 	private final KillClogConfig config;
 
-	// Stable popup state. Click mode opens this directly; hover mode promotes its
-	// transient preview into the same popup when the source is pressed.
+	// The pinned card. Click mode opens it directly; in hover mode a press on the cell turns the hover's preview into
+	// it.
 	private Popup activePinnedPopup;
 	private JToolTip activePinnedTip;
 	private JComponent activePinnedComponent;

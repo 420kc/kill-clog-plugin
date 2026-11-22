@@ -35,8 +35,8 @@ final class LookupFanout
 	@Getter(AccessLevel.PACKAGE)
 	private volatile boolean inFlight = false;
 
-	// EDT-owned: the League these lookups read (null: the main game) and the player's own
-	// open log for it. League reads come from League Hiscores and Kill Clog only.
+	// Swing thread only: the League these lookups read (null: the main game) and the player's own open log for it. A
+	// League is read from the League hiscores and killclog.com only.
 	@Getter(AccessLevel.PACKAGE)
 	@Nullable private String league;
 	@Nullable private LocalClogCache leagueLog;

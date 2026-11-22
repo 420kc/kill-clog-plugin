@@ -12,13 +12,13 @@ public class ClogResult
 	/** The player's name, capitalized as its source writes it. */
 	@Getter
 	private final String playerName;
-	/** category key -> list of obtained items with counts */
+	/** Each page's obtained items with their counts, by page key. */
 	@Getter
 	private final Map<String, List<ClogItem>> obtainedItems;
-	/** category key -> all item IDs in that category */
+	/** Every item id on each page, by page key. */
 	@Getter
 	private final Map<String, List<Integer>> categoryItems;
-	/** item id -> display name, concurrent: written from client thread, read from EDT. */
+	/** Item names by id; concurrent, since the client thread writes it and the Swing thread reads it. */
 	private final Map<Integer, String> itemNames;
 	/** When the player last synced clog data, or null for providers without it */
 	@Getter

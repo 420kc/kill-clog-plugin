@@ -8,7 +8,10 @@ import java.util.function.*;
 import javax.swing.*;
 import net.runelite.client.ui.ColorScheme;
 
-/** EDT-owned leaderboard views for the looked-up player. Cached service results stay untouched. */
+/**
+ * The leaderboard selector's views of the looked-up player, Swing thread only. The services' cached results are never
+ * changed.
+ */
 final class RankSelector extends JPanel
 {
 	/** The row a board without this player shows: nothing. */

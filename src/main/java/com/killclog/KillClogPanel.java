@@ -78,7 +78,7 @@ public class KillClogPanel extends PluginPanel
 		@Override
 		public JToolTip createToolTip()
 		{
-			// Comparison mode: this label is the red RSN.
+			// In a comparison this label is the rival's name.
 			return comparison.showsPair() ? summaryCards.buildPlayer(this, rsn, rowIdentity, rivalIdentity)
 				: summaryCards.buildClog(this, getDisplayedRsn());
 		}
@@ -102,8 +102,7 @@ public class KillClogPanel extends PluginPanel
 	private JPanel bossViewContainer;
 	private JPanel bossGridPanel;
 
-	// Current lookup state lives on lookupSession; rsn here is a separate
-	// display-name field set by fetchRsn for the playerName label.
+	// The lookup itself lives on lookupSession; rsn is the name the header shows, as fetchRsn set it.
 	private String rsn;
 	// Who is logged in now, null once logged out (a lookup of them is your own); your last login's name for the search icon.
 	private String localRsn;
@@ -1046,7 +1045,7 @@ public class KillClogPanel extends PluginPanel
 		}
 	}
 
-	/** The RSN the panel shows, or the one it looked up when no provider named them; null with no lookup. */
+	/** The name the panel shows, or the one it looked up when no site named them; null with no lookup. */
 	public String getDisplayedRsn()
 	{
 		return rsn != null ? rsn : lookupSession.getCurrentLookupRsn();
@@ -1170,14 +1169,14 @@ public class KillClogPanel extends PluginPanel
 		}
 	}
 
-	/** The cards wear the colours the player set, and the status row the game's character icon (a pack's, if any). */
+	/** The cards wear the colors the player set, and the status row the game's character icon (a pack's, if any). */
 	public void reloadCardLook()
 	{
 		applyCardColors();
 		statusRow.requestCharacterIcon();
 	}
 
-	/** The cards wear the colours the player set. */
+	/** The cards wear the colors the player set. */
 	private void applyCardColors()
 	{
 		NativeTooltip.cardColors(config.cardLabelColor(), config.cardValueColor(), config.cardDividerColor(),

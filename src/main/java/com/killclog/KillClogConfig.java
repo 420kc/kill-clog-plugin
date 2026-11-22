@@ -469,7 +469,7 @@ public interface KillClogConfig extends Config
 		return new Color(255, 87, 0);
 	}
 
-	// Persisted UI state, not user settings.
+	// What the panel remembers between sessions; not settings.
 
 	// Open by default. The separator opens and shuts the tray and shows either way, so a shut tray can always be opened
 	// again.
