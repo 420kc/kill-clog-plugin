@@ -167,10 +167,11 @@ final class CombatAchievementResult
 	}
 
 	/**
-	 * The tiers a card shows: yours from your own game; anyone else's from the fuller of their own Kill Clog sync and
-	 * RuneProfile, by points, ties going to their sync, as the fullest log leads, so a sync they stopped never stands
-	 * over RuneProfile's later answer. A character's tasks only grow while it plays, so the fuller is the newer; a
-	 * Hardcore Worlds reset or a retired task can leave RuneProfile's older reading the fuller until it updates.
+	 * The tiers a card shows: yours from your own game, once this login has read it. Anyone else's, and yours until
+	 * then (the reading kept from an earlier login), are the fuller of what was fetched and their own Kill Clog sync,
+	 * by points, ties going to the sync, as the fullest log leads, so a sync they stopped never stands over
+	 * RuneProfile's later answer. A character's tasks only grow while it plays, so the fuller is the newer; a Hardcore
+	 * Worlds reset or a retired task can leave RuneProfile's older reading the fuller until it updates.
 	 */
 	@Nullable
 	static CombatAchievementResult shown(@Nullable CombatAchievementResult fetched, @Nullable CombatAchievementResult synced)

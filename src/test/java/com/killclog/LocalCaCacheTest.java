@@ -97,6 +97,8 @@ public class LocalCaCacheTest
 		assertFalse(cache.hasDataFor("Tester"));
 		cache.serve(new Session(4, "Tester", HASH));
 		assertEquals(5, TestViews.completed(cache.getCached("Tester"), CombatAchievementTier.EASY));
+		assertSame("read by an earlier login of this run, so not yet this login's word from the game", sync,
+			CombatAchievementResult.shown(cache.getCached("Tester"), sync));
 		cache.serve(new Session(5, "Tester", HASH + 1));
 		assertFalse(cache.hasDataFor("Tester"));
 	}
