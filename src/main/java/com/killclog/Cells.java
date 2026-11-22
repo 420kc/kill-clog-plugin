@@ -309,7 +309,7 @@ public class Cells
 		ClogResult catalog = lookupSession.getClogResult() == null && !selfNoCache
 			? unsyncedCatalog.result() : null;
 
-		// Boss cells, none for the sync-prompt self-lookup. Vanilla records pbs on the local profile only; for looked-up
+		// Boss cells, none for the sync-prompt self-lookup. RuneLite records pbs on the local profile only; for looked-up
 		// players the killclog.com sync is the one source that serves them, cached by the same fetch that raced the clog
 		// providers.
 		UnaryOperator<String> pbs = pbs(self);

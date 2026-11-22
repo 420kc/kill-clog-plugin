@@ -16,7 +16,7 @@ final class PanelData
 
 	static final int MAX_TOTAL_LEVEL = 2376;
 
-	// Boss display order matching vanilla RuneLite hiscores: enum declaration
+	// Boss display order matching RuneLite's Hiscore panel: enum declaration
 	// order. Same bosses as HiscoreService.bossNames() - name-keyed lookups
 	// bridge the two lists when order diverges.
 	// New boss? Add it here in enum order once RuneLite adds it.

@@ -343,7 +343,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 		gearSprites = TooltipItemSprites.load(gear, null, itemManager, id -> 1, this);
 	}
 
-	/** Vanilla's hiscore formatter: up to three decimals, trailing zeros dropped. */
+	/** As RuneLite's Hiscore panel writes it: up to three decimals, trailing zeros dropped. */
 	static String combatText(double combatLevel)
 	{
 		return combatLevel > 0 ? QuantityFormatter.formatNumber(combatLevel) : MISSING;

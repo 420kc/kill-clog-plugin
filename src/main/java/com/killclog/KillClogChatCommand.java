@@ -307,7 +307,7 @@ class KillClogChatCommand
 	 * and boss names are its argument space. Item names are ours, so
 	 * KillClogPlugin routes raw chat events here; boss arguments, unknown
 	 * items, and items without captured provenance all fall through untouched
-	 * and the vanilla boss lookup keeps working.
+	 * and Chat Commands' boss lookup keeps working.
 	 *
 	 * Runs on the client thread (event subscriber path, not the command
 	 * manager's executor), so item compositions are safe to read directly.

@@ -373,7 +373,7 @@ class SyncService
 			root.add("pbs", pbs);
 		}
 
-		// The same bests under vanilla's variant key with team sizes kept apart ("chambers of xeric solo" and
+		// The same bests under Chat Commands' variant key with team sizes kept apart ("chambers of xeric solo" and
 		// "... 5 players"), since solo and team runs rank separately; the collapsed map above stays for display. Each
 		// carries where this client saw it: "store" from RuneLite's own pb store, "advlog" from the Adventure Log's
 		// Counters scroll, "clog" from the Collection Log's line, "live" from a kill seen.

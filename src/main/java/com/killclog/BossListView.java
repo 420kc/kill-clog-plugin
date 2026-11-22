@@ -82,8 +82,8 @@ public class BossListView
 		root.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 
 		// PanelData.BOSSES is the Jagex hiscores order: near-alphabetical with
-		// vanilla's deliberate pairings kept (Nightmare then Phosani's,
-		// Gauntlet then Corrupted). The list keeps vanilla's order rather
+		// its deliberate pairings kept (Nightmare then Phosani's,
+		// Gauntlet then Corrupted). The list keeps that order rather
 		// than imposing a strict sort - players have already scanned this
 		// exact order in the game's own hiscores.
 		root.add(searchRow());

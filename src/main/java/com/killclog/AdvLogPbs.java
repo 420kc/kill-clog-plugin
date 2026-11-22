@@ -27,7 +27,7 @@ final class AdvLogPbs
 	/* package */ static final String CONFIG_GROUP = "killclog";
 
 	/**
-	 * The harvest's timing, vanilla's two-stage shape: a menu load names the log's owner and the
+	 * The harvest's timing, in the two stages RuneLite's Chat Commands uses: a menu load names the log's owner and the
 	 * Counters scroll load triggers the parse a tick later, once its children are populated. The owner
 	 * is scoped to one POH visit, so a friend's log can never linger and gate a later harvest.
 	 */
@@ -86,7 +86,7 @@ final class AdvLogPbs
 	/* package */ static final String KEY_PREFIX = "advlogpb.";
 
 	private static final Pattern TITLE_PATTERN = Pattern.compile("The Exploits of (.+)");
-	// Vanilla's adventure-log pb line shape, verbatim: "Overall time" and
+	// Chat Commands' pattern for an Adventure Log pb line, verbatim: "Overall time" and
 	// "(former)" lines intentionally fall through, and "-" (no time) never
 	// matches the time group.
 	private static final String TEAM_SIZES = "(?<teamsize>\\d+(?:\\+|-\\d+)? players?|Solo)";
@@ -159,7 +159,7 @@ final class AdvLogPbs
 		return matcher.find() ? matcher.group(1) : null;
 	}
 
-	/** Owner gate with the nbsp/tag hygiene vanilla's raw compare lacks. */
+	/** Owner gate with the nbsp/tag hygiene Chat Commands' raw compare lacks. */
 	static boolean sameName(String localName, String owner)
 	{
 		return localName != null && owner != null
@@ -168,8 +168,8 @@ final class AdvLogPbs
 
 	/**
 	 * Parse the Counters scroll into variant pb keys -> seconds. Lines arrive
-	 * tag-stripped; the walk is vanilla's own (section title, then pb lines
-	 * until a blank), with team sizes normalized exactly the way vanilla
+	 * tag-stripped; the walk is Chat Commands' own (section title, then pb lines
+	 * until a blank), with team sizes normalized exactly the way it
 	 * stores them ("1 player" -> solo, "2 player" -> "2 players").
 	 */
 	/* package */ static Map<String, Double> parseCounters(String[] text)
@@ -222,7 +222,7 @@ final class AdvLogPbs
 		return PersonalBests.encounter(title);
 	}
 
-	/** Vanilla's time parser: mm:ss(.f) and h:mm:ss(.f). */
+	/** Chat Commands' time parser: mm:ss(.f) and h:mm:ss(.f). */
 	/* package */ static double timeToSeconds(String time)
 	{
 		String[] s = time.split(":");

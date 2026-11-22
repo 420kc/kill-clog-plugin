@@ -512,7 +512,7 @@ public class ClogResult
 		private final int id;
 		private final int count;
 		private final String date;
-		// Provenance captured at the live unlock moment, when the vanilla
+		// Provenance captured at the live unlock moment, when the game's
 		// kill-count message landed just before the clog message. 0 / null
 		// mean unknown: provider data, full log captures, and pre-capture cache
 		// files never carry these.

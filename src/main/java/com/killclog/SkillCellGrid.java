@@ -318,8 +318,8 @@ final class SkillCellGrid
 
 	/**
 	 * True when the Virtual Levels plugin is on and its "virtual total level"
-	 * sub-setting is too (their default: on). Mirrors the vanilla skill tab's
-	 * total exactly.
+	 * sub-setting is too (their default: on). Mirrors the total that plugin
+	 * puts on the skill tab.
 	 */
 	static boolean virtualTotalLevelEnabled(ConfigManager configManager)
 	{
@@ -333,7 +333,7 @@ final class SkillCellGrid
 
 	/**
 	 * Total level for display: the hiscore total normally, the sum of
-	 * xp-derived virtual levels when the vanilla virtual-total setting is on.
+	 * xp-derived virtual levels when Virtual Levels' virtual total setting is on.
 	 * Skills the hiscores hide (unranked) contribute their hiscore value via
 	 * the max guard, so a partially-ranked account never shows a virtual
 	 * total below its real one. Never used for maxed detection - identity

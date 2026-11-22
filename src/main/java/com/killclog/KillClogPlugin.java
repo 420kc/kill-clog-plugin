@@ -507,7 +507,7 @@ public class KillClogPlugin extends Plugin
 			unsettleWorld();
 		}
 
-		// The owner claim is scoped to one POH visit, exactly as vanilla
+		// The owner claim is scoped to one POH visit, exactly as Chat Commands
 		// scopes it: any region load or hop drops it, so a friend's log can
 		// never linger and gate (or worse, misattribute) a later harvest.
 		if (event.getGameState() == GameState.LOADING

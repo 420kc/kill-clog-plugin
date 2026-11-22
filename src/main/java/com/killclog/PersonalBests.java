@@ -209,7 +209,7 @@ final class PersonalBests
 			.replace(": entry mode", " entry mode");
 	}
 
-	/** Same rendering vanilla uses for !pb, trailing precision only when real. */
+	/** Same rendering Chat Commands uses for !pb, trailing precision only when real. */
 	/* package */ static String formatSeconds(double seconds)
 	{
 		int hours = (int) (Math.floor(seconds) / 3600);

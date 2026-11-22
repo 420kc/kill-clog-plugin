@@ -205,7 +205,7 @@ public class ComparisonController
 	}
 
 	@Setter
-	// Follows the vanilla virtual-total setting; display only, never ranking.
+	// Follows Virtual Levels' virtual total setting; display only, never ranking.
 	private Supplier<Boolean> virtualTotalLevel = () -> false;
 
 	/** Wire the {@link Cells} reference. Late-bound: Cells needs a controller ref at its own construction. */

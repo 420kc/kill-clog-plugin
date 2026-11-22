@@ -24,7 +24,7 @@ public class HiscoreResult
 	private final int totalLevel;
 	@Getter
 	private final long totalXp;
-	/** Unrounded, so the Combat Summary can show what vanilla calls Exact Combat Level. */
+	/** Unrounded, so the Combat Summary can show what RuneLite's Hiscore panel calls Exact Combat Level. */
 	@Getter
 	private final double combatLevelExact;
 	@Getter

@@ -23,7 +23,7 @@ final class ClogUnlockParser
 	private static final Pattern CLAN_BROADCAST_UNLOCK = Pattern.compile(
 		"^(.+?) received a new collection log item: (.+?)(?: \\((\\d+)/(\\d+)\\))?$");
 
-	// Vanilla kill-count message, RuneLite's canonical shape: covers kill,
+	// The game's kill-count message, in RuneLite's own pattern: covers kill,
 	// harvest, lap, completion, success, and subdued variants with their
 	// color tags. Each boss's latest one supplies the "obtained at N kc"
 	// provenance (LiveClogSync).
