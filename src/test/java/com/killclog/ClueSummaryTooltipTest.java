@@ -168,7 +168,10 @@ public class ClueSummaryTooltipTest
 			&& first.y > tile.y && first.y < tile.y + GameTile.HEIGHT);
 		for (int row = 1; row < ClueSummaryTooltip.RARE_LABELS.length; row++)
 		{
-			assertTrue("rare " + row, TestViews.textAt(image, row + "/38", count, new java.awt.Color(255, 255, 0)) != null);
+			Point at = TestViews.textAt(image, row + "/38", count, new java.awt.Color(255, 255, 0));
+			Point own = tiles.get(ClueSummaryTooltip.MIMIC - 1 + row);
+			assertTrue("rare " + row + " reads its count on its own tile", at != null && at.x > own.x
+				&& at.x < own.x + GameTile.WIDTH && at.y > own.y && at.y < own.y + GameTile.HEIGHT);
 		}
 		assertTrue("and the first tier its own", TestViews.textAt(image, "10/140", count, new java.awt.Color(255, 255, 0)) != null);
 	}

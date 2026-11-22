@@ -449,12 +449,27 @@ public class PvmSummaryTooltipTest
 		}
 		assertNotNull("Slayer's Obtained line reads 1/5 in yellow", obtained);
 
+		int withLog = TooltipController.cardImage(tip).getHeight();
 		// With no log there is no such line, and the card is a line shorter for it.
 		PvmSummaryTooltip bare = new PvmSummaryTooltip();
 		bare.setData(110.5, 2_500, 40, PanelData.bossCount(), "Vorkath", 900);
 		bare.setRaids(hiscore, null);
 		bare.setSlayer(hiscore, null);
 		assertNull(TestViews.textAt(render(painted(bare)), "1/5", FontManager.getRunescapeSmallFont(), new Color(255, 255, 0)));
+		assertEquals(NativeTooltip.LINE_HEIGHT, withLog - TooltipController.cardImage(bare).getHeight());
+	}
+
+	@Test
+	public void aComparisonsEmptyCombatAchievementLinesAreMutedToo()
+	{
+		// The side with no Combat Achievements keeps the lines so the pair lines up, each a muted "--".
+		PvmSummaryTooltip with = pvmCard(easy());
+		PvmSummaryTooltip without = pvmCard(null);
+		PvmSummaryTooltip.lineUp(with, without);
+		BufferedImage image = TooltipController.cardImage(without);
+		java.awt.Font small = FontManager.getRunescapeSmallFont();
+		assertNotNull(TestViews.textAt(image, "--", small, TitleTooltip.MUTED_GRAY));
+		assertNull(TestViews.textAt(image, "--", small, NativeTooltip.valueColor));
 	}
 
 	@Test

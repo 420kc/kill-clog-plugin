@@ -83,9 +83,23 @@ public class UnrankedTooltipTest
 		ImgTooltip boss = new ImgTooltip(5);
 		boss.setTitle("Zulrah");
 		boss.setRank(0);
+		// A raid's hard mode beside it, unranked as well.
+		boss.setRankPair("CM: ", 0);
 		BufferedImage header = TestViews.paint(boss);
 		assertNotNull(TestViews.textAt(header, "Unranked", small, muted));
 		assertNull("not in the label's orange", TestViews.textAt(header, "Unranked", small, NativeTooltip.labelColor));
+		assertNull("nor a number's white", TestViews.textAt(header, "Unranked", small, NativeTooltip.valueColor));
+
+		// Until the hiscores answer, the same lines read "--": a rank nobody has told us is not Unranked.
+		HiscoreResult unanswered = result(10).withRanks(null);
+		SkillsTooltip waiting = new SkillsTooltip();
+		waiting.setData(unanswered, null, false);
+		assertNull(TestViews.textAt(TestViews.paint(waiting), "Unranked", small, muted));
+		PvmSummaryTooltip waitingCombat = new PvmSummaryTooltip();
+		waitingCombat.setData(110.5, 2_500, 40, PanelData.bossCount(), "Vorkath", 900);
+		waitingCombat.setRaids(unanswered, null);
+		waitingCombat.setSlayer(unanswered, null);
+		assertNull(TestViews.textAt(TooltipController.cardImage(waitingCombat), "Unranked", small, muted));
 
 		// Before any lookup every card's "--" is muted, and none is a number's white.
 		PvmSummaryTooltip restingCombat = new PvmSummaryTooltip();
@@ -95,9 +109,12 @@ public class UnrankedTooltipTest
 		restingTotals.setData(null, null, false);
 		SkillTooltip restingSkill = new SkillTooltip();
 		restingSkill.setData(Skill.ATTACK, null, false, null, null);
-		for (javax.swing.JComponent card : new javax.swing.JComponent[]{restingCombat, restingTotals, restingSkill})
+		for (javax.swing.JToolTip card : new javax.swing.JToolTip[]{restingCombat, restingTotals, restingSkill})
 		{
-			BufferedImage image = TestViews.paint(card);
+			// The whole card, as Copy holds it: the Combat Summary's PvP tiles sit under its scroll.
+			BufferedImage image = TooltipController.cardImage(card);
+			assertNull("a tile's count too", TestViews.textAt(image, "--", net.runelite.client.ui.FontManager.getRunescapeFont(),
+				NativeTooltip.valueColor));
 			assertNotNull(card.getClass().getSimpleName(), TestViews.textAt(image, "--", small, muted));
 			assertNull(card.getClass().getSimpleName(), TestViews.textAt(image, "--", small, NativeTooltip.valueColor));
 		}
