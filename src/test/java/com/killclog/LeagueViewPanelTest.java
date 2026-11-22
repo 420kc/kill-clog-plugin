@@ -437,6 +437,45 @@ public class LeagueViewPanelTest
 	}
 
 	@Test
+	public void yourCombatAchievementsReadAfterYourLookupBeganReachIt() throws Exception
+	{
+		// A login looks you up at once; the game's tiers are read only once the world has settled, some ticks on.
+		CombatAchievementResult game = CombatAchievementResult.fromGame(
+			java.util.Map.of(CombatAchievementTier.EASY, 5), java.util.Map.of(CombatAchievementTier.EASY, 33), null);
+		when(runeProfile.lookup("My Name")).thenReturn(CompletableFuture.completedFuture(null),
+			CompletableFuture.completedFuture(game));
+		SwingUtilities.invokeAndWait(() ->
+		{
+			panel.setLoggedInPlayer("My Name", AccountType.REGULAR);
+			panel.setPlayerName("My Name");
+			panel.doLookup();
+		});
+		SwingUtilities.invokeAndWait(() ->
+		{
+		});
+		assertNull("nothing read from the game yet", session.getCaResult());
+
+		SwingUtilities.invokeAndWait(() -> panel.onOwnCaRead("My Name"));
+		SwingUtilities.invokeAndWait(() ->
+		{
+		});
+		assertSame("the Combat Summary reads the lookup's", game, session.getCaResult());
+
+		// Looking at someone else, your own reading is not theirs.
+		when(runeProfile.lookup("Friend")).thenReturn(new CompletableFuture<>());
+		SwingUtilities.invokeAndWait(() ->
+		{
+			panel.setPlayerName("Friend");
+			panel.doLookup();
+			panel.onOwnCaRead("My Name");
+		});
+		SwingUtilities.invokeAndWait(() ->
+		{
+		});
+		assertNull(session.getCaResult());
+	}
+
+	@Test
 	public void aFirstCaptureUnderAnotherSpellingOfYourNameStillShowsYou() throws Exception
 	{
 		SwingUtilities.invokeAndWait(() ->

@@ -1065,6 +1065,12 @@ public class KillClogPanel extends PluginPanel
 		return typed != null && !typed.trim().isEmpty() ? typed.trim() : "--";
 	}
 
+	/** The game's reading of your Combat Achievements came in: the lookup of you on screen takes it. */
+	public void onOwnCaRead(String name)
+	{
+		lookupSession.refreshLocalCa(name, localRsn);
+	}
+
 	public void onWalkComplete(String name)
 	{
 		if (!RsnInputPolicy.sameName(localRsn, name)) return;

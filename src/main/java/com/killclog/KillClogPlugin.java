@@ -761,9 +761,11 @@ public class KillClogPlugin extends Plugin
 		}
 		ownLogLines(session, hardcoreXp, settledNow);
 		recheckAccountType(session);
-		if (sessionState.pendingCaRead())
+		if (sessionState.pendingCaRead() && captureLocalCa())
 		{
-			sessionState.setPendingCaRead(!captureLocalCa());
+			sessionState.setPendingCaRead(false);
+			// The login's lookup of you began before this reading, with no tiers to show.
+			SwingUtilities.invokeLater(() -> panel.onOwnCaRead(session.getName()));
 		}
 		autoLookup(session);
 		walkLog();

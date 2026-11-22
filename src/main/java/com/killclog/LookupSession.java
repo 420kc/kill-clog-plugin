@@ -162,13 +162,7 @@ public class LookupSession
 
 		listener.onLookupStart(player, isSelf, isFirstSelfGreeting);
 
-		// The Combat Achievements are asked alongside the hiscore and the log (and on the cached path), waiting on
-		// neither. RuneProfileService keeps its own cache and never asks twice at once.
-		fanout.fetchCa(player, thisLookup, ca ->
-		{
-			caResult = ca;
-			listener.onCaResult(player, ca, isSelf, thisLookup);
-		});
+		askCa(player, isSelf, thisLookup);
 
 		// Your own account type comes from the game, so the hiscores needn't try each board to learn it; they must not
 		// for a Group Ironman, who is on the regular board only.
@@ -325,10 +319,41 @@ public class LookupSession
 		heldLookup = -1;
 	}
 
+	/**
+	 * The Combat Achievements, asked alongside the hiscore and the log (and on the cached path), waiting on neither.
+	 * RuneProfileService keeps its own cache and never asks twice at once.
+	 */
+	private void askCa(String player, boolean isSelf, int lookup)
+	{
+		fanout.fetchCa(player, lookup, ca ->
+		{
+			caResult = ca;
+			listener.onCaResult(player, ca, isSelf, lookup);
+		});
+	}
+
+	/** Whether the lookup on screen is of the player logged in. */
+	private boolean showsYou(String player, @Nullable String localRsn)
+	{
+		return RsnInputPolicy.sameName(localRsn, player) && RsnInputPolicy.sameName(currentLookupRsn, player);
+	}
+
+	/**
+	 * Take your own Combat Achievements as the game has them now, with no new lookup. A login looks you up at once,
+	 * while the game's tiers are read only once the world has settled, so that lookup began with none.
+	 */
+	void refreshLocalCa(String player, @Nullable String localRsn)
+	{
+		if (showsYou(player, localRsn))
+		{
+			askCa(player, true, fanout.version());
+		}
+	}
+
 	/** Show your own log as it is now, on the Swing thread, with no new lookup. */
 	void refreshLocalClog(String player, @Nullable String localRsn)
 	{
-		if (!RsnInputPolicy.sameName(localRsn, player) || !RsnInputPolicy.sameName(currentLookupRsn, player)) return;
+		if (!showsYou(player, localRsn)) return;
 		ClogResult local = fanout.ownLog(player);
 		if (local == null || !local.isFromLocal()) return;
 		localClogRevision++;

@@ -1119,6 +1119,25 @@ public class PluginPublicationCharacterizationTest
 		order.verify(panel).setControls(any());
 	}
 
+	/** The login's lookup of you starts before the world settles; the tiers read once it has are handed to it. */
+	@Test
+	public void theGamesCombatAchievementsAreHandedToThePanelWhenRead() throws Exception
+	{
+		when(localClogCache.serve(any())).thenReturn(true);
+		((ClogSessionState) field("sessionState")).requestAutoLookup(true);
+		ticks(9);
+		SwingUtilities.invokeAndWait(() ->
+		{
+		});
+		verify(panel).doLookup();
+		verify(panel, never()).onOwnCaRead(any());
+		ticks(1);
+		SwingUtilities.invokeAndWait(() ->
+		{
+		});
+		verify(panel).onOwnCaRead(RSN);
+	}
+
 	/** An empty log that's set up (a new account, a fresh Hardcore Worlds run) is ready at login and catches up. */
 	@Test
 	public void anEmptySetUpLogIsReadyAtLoginAndPushesOnce() throws Exception
