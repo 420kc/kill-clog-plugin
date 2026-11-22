@@ -218,7 +218,7 @@ final class GameTile
 		}
 		g.setFont(COUNT_FONT);
 		FontMetrics fm = g.getFontMetrics();
-		g.setColor(scored ? NativeTooltip.valueColor : color);
+		g.setColor(scored ? TitleTooltip.ink(count) : color);
 		g.drawString(count, center - fm.stringWidth(count) / 2, box.y + (page ? PAGE_COUNT_TOP : COUNT_TOP) + fm.getAscent());
 		g.setFont(font);
 

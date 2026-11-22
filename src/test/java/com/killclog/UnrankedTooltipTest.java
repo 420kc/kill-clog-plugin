@@ -57,6 +57,66 @@ public class UnrankedTooltipTest
 		assertNull(rankText(tooltip(knownKills.toBuilder().kc(-1).build(), result(-1), true)));
 	}
 
+	// One look (Dylan, 2026-11-21): where a card has no value it writes "--", and for a player the hiscores answered
+	// without a rank it writes "Unranked", both in the cards' one muted grey, never in a number's white.
+	@Test
+	public void aMissingValueAndAnUnrankedPlayerReadOneWayOnEveryCard()
+	{
+		assertEquals(TitleTooltip.MUTED_GRAY, TitleTooltip.ink("--"));
+		assertEquals(TitleTooltip.MUTED_GRAY, TitleTooltip.ink("Unranked"));
+		assertEquals(NativeTooltip.valueColor, TitleTooltip.ink("0"));
+		assertEquals("Unranked", TitleTooltip.rankText(-1, true));
+		assertEquals("--", TitleTooltip.rankText(-1, false));
+		assertEquals("12,345", TitleTooltip.rankText(12345, true));
+
+		java.awt.Font small = net.runelite.client.ui.FontManager.getRunescapeSmallFont();
+		java.awt.Color muted = TitleTooltip.MUTED_GRAY;
+		// A player the hiscores do not rank: Experience & Efficiency, the Combat Summary's Slayer and a card's header.
+		SkillsTooltip totals = new SkillsTooltip();
+		totals.setData(result(-1), null, false);
+		assertNotNull(TestViews.textAt(TestViews.paint(totals), "Unranked", small, muted));
+		PvmSummaryTooltip combat = new PvmSummaryTooltip();
+		combat.setData(110.5, 2_500, 40, PanelData.bossCount(), "Vorkath", 900);
+		combat.setRaids(result(-1), null);
+		combat.setSlayer(result(-1), null);
+		assertNotNull(TestViews.textAt(TestViews.paint(combat), "Unranked", small, muted));
+		ImgTooltip boss = new ImgTooltip(5);
+		boss.setTitle("Zulrah");
+		boss.setRank(0);
+		BufferedImage header = TestViews.paint(boss);
+		assertNotNull(TestViews.textAt(header, "Unranked", small, muted));
+		assertNull("not in the label's orange", TestViews.textAt(header, "Unranked", small, NativeTooltip.labelColor));
+
+		// Before any lookup every card's "--" is muted, and none is a number's white.
+		PvmSummaryTooltip restingCombat = new PvmSummaryTooltip();
+		restingCombat.setData(-1, -1, -1, PanelData.bossCount(), null, 0);
+		restingCombat.setSlayer(null, null);
+		SkillsTooltip restingTotals = new SkillsTooltip();
+		restingTotals.setData(null, null, false);
+		SkillTooltip restingSkill = new SkillTooltip();
+		restingSkill.setData(Skill.ATTACK, null, false, null, null);
+		for (javax.swing.JComponent card : new javax.swing.JComponent[]{restingCombat, restingTotals, restingSkill})
+		{
+			BufferedImage image = TestViews.paint(card);
+			assertNotNull(card.getClass().getSimpleName(), TestViews.textAt(image, "--", small, muted));
+			assertNull(card.getClass().getSimpleName(), TestViews.textAt(image, "--", small, NativeTooltip.valueColor));
+		}
+		// The Combat Summary's level beside its title too: grey there, with nothing near a number's white (the title's
+		// larger font is smoothed, so this reads shades where the lines above read exact pixels).
+		BufferedImage top = TestViews.paint(restingCombat);
+		int grey = 0;
+		for (int y = 0; y < TestViews.rules(top).get(0); y++)
+		{
+			for (int x = top.getWidth() / 2; x < top.getWidth(); x++)
+			{
+				java.awt.Color c = new java.awt.Color(top.getRGB(x, y));
+				assertFalse("no white at " + x + "," + y, Math.min(c.getRed(), Math.min(c.getGreen(), c.getBlue())) > 200);
+				grey += c.getRed() >= 110 && c.getRed() - c.getBlue() < 25 ? 1 : 0;
+			}
+		}
+		assertTrue("the level's \"--\" is drawn", grey > 0);
+	}
+
 	@Test
 	public void skillsDistinguishUnrankedFromLoadingAndDormant()
 	{

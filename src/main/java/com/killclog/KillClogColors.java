@@ -12,7 +12,6 @@ final class KillClogColors
 	static final Color COMPARE_BLUE = new Color(91, 164, 207);
 	static final Color COMPARE_RED = new Color(224, 86, 86);
 	static final Color SELF_COLOR = new Color(0x4c, 0xaf, 0x6e);
-	static final Color UNRANKED_COLOR = new Color(128, 128, 128);
 	/** Art dimmed to 30%: an item not held, a tier not reached, a faint tile, a dimmed cell icon. */
 	static final AlphaComposite DIM = AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.3f);
 

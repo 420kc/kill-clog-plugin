@@ -144,11 +144,10 @@ public class SkillCellGridTest
 		assertEquals("49", TestViews.stats(attack).levelText());
 		assertEquals(format(attackXp), TestViews.stats(attack).xpText());
 		assertEquals("2,049", TestViews.stats(attack).rankText());
-		assertEquals(format(Experience.getXpForLevel(50) - attackXp),
-			TestViews.stats(attack).xpToLevelText());
+		assertEquals(Experience.getXpForLevel(50) - attackXp, TestViews.xpToLevel(attack));
 
 		SkillTooltip defence = (SkillTooltip) cells.labels().get(Skill.DEFENCE).createToolTip();
-		assertEquals("Maxed", TestViews.stats(defence).xpToLevelText());
+		assertEquals("maxed", -1, TestViews.xpToLevel(defence));
 	}
 
 	@Test
@@ -273,9 +272,8 @@ public class SkillCellGridTest
 		// Each side's level wears its own player's skill color, never the comparison's blue or red; neither has a log.
 		assertEquals(KillClogColors.KC_COLOR, TestViews.field(blueSide, "levelColor"));
 		assertEquals(KillClogColors.KC_COLOR, TestViews.field(redSide, "levelColor"));
-		assertEquals("Maxed", TestViews.stats(blueSide).xpToLevelText());
-		assertEquals(format(Experience.getXpForLevel(99)
-			- Experience.getXpForLevel(98) - 10L), TestViews.stats(redSide).xpToLevelText());
+		assertEquals("maxed", -1, TestViews.xpToLevel(blueSide));
+		assertEquals(Experience.getXpForLevel(99) - Experience.getXpForLevel(98) - 10L, TestViews.xpToLevel(redSide));
 	}
 
 	@Test
@@ -443,7 +441,11 @@ public class SkillCellGridTest
 		fresh.setData(Skill.HERBLORE, skillHiscores(Skill.HERBLORE, 1, 0, -1), false, Collections.emptyList(), null);
 		assertEquals("0", TestViews.stats(fresh).xpText());
 		assertEquals("Unranked", TestViews.stats(fresh).rankText());
-		assertEquals(format(Experience.getXpForLevel(2)), TestViews.stats(fresh).xpToLevelText());
+		assertEquals(Experience.getXpForLevel(2), TestViews.xpToLevel(fresh));
+		// The card writes that count in white over its bar.
+		java.awt.Font small = net.runelite.client.ui.FontManager.getRunescapeSmallFont();
+		assertTrue(TestViews.textAt(TestViews.paint(fresh), format(Experience.getXpForLevel(2)), small,
+			NativeTooltip.valueColor) != null);
 
 		long virtualXp = 32_643_866L;
 		int virtualLevel = Experience.getLevelForXp((int) virtualXp);
@@ -451,14 +453,15 @@ public class SkillCellGridTest
 		virtual.setData(Skill.HERBLORE,
 			skillHiscores(Skill.HERBLORE, 99, virtualXp, 1_075), true, Collections.emptyList(), null);
 		assertEquals(String.valueOf(virtualLevel), TestViews.stats(virtual).levelText());
-		assertEquals(format(Experience.getXpForLevel(virtualLevel + 1) - virtualXp),
-			TestViews.stats(virtual).xpToLevelText());
+		assertEquals(Experience.getXpForLevel(virtualLevel + 1) - virtualXp, TestViews.xpToLevel(virtual));
 
 		SkillTooltip capped = new SkillTooltip();
 		capped.setData(Skill.HERBLORE,
 			skillHiscores(Skill.HERBLORE, 99, Experience.MAX_SKILL_XP, 1), true, Collections.emptyList(), null);
 		assertEquals(String.valueOf(Experience.MAX_VIRT_LEVEL), TestViews.stats(capped).levelText());
-		assertEquals("Maxed", TestViews.stats(capped).xpToLevelText());
+		assertEquals("maxed", -1, TestViews.xpToLevel(capped));
+		// And once there is none left, a green "Maxed".
+		assertTrue(TestViews.textAt(TestViews.paint(capped), "Maxed", small, new java.awt.Color(0, 255, 0)) != null);
 	}
 
 	private static SkillCellGrid grid()

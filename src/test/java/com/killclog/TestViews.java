@@ -387,6 +387,13 @@ final class TestViews
 		return field(tip, "stats");
 	}
 
+	/** The XP a skill card holds as left to its next level, or -1 once it is maxed. */
+	static long xpToLevel(SkillTooltip tip)
+	{
+		SkillTooltip.Stats stats = stats(tip);
+		return TestViews.<Boolean>field(stats, "maxed") ? -1 : TestViews.<Long>field(stats, "xpToLevel");
+	}
+
 	/** A card painted at its preferred size, as the client shows it. */
 	static java.awt.image.BufferedImage paint(javax.swing.JComponent card)
 	{

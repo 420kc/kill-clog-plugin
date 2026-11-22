@@ -55,12 +55,9 @@ public class SkillsTooltip extends TitleTooltip
 	{
 		long toMax = xpToMax(result);
 		CardBody card = new CardBody()
-			.add(CardBody.line("XP: ", displayedXpText(),
-				result != null && result.getTotalXp() >= 0 ? NativeTooltip.valueColor : KillClogColors.UNRANKED_COLOR))
-			.add(CardBody.line("Rank: ", scoreText(displayedRank()), displayedRank() > 0 ? NativeTooltip.valueColor : KillClogColors.UNRANKED_COLOR))
-			.add(CardBody.line("To max: ", toMax == 0 ? "Maxed" : toMax > 0 ? grouped(toMax) : "--",
-				toMax == 0 ? CLOG_GREEN : NativeTooltip.valueColor))
-			.add(CardBody.bar(maxShare(toMax), toMax == 0 ? CLOG_GREEN : CLOG_YELLOW));
+			.add(CardBody.line("XP: ", displayedXpText()))
+			.add(CardBody.line("Rank: ", rankText(displayedRank(), result != null && result.isRankDataAvailable())))
+			.add(CardBody.toGo("To max: ", toMax, toMax == 0, maxShare(toMax)));
 		card.titled("Efficient Hours");
 		if (templeRows)
 		{
@@ -74,7 +71,7 @@ public class SkillsTooltip extends TitleTooltip
 		String text = ehbText(value);
 		return CardBody.clickRow(hourRows, row, c -> c.fm.stringWidth(label + text), (c, y, hovered) ->
 			drawLabelValue(c.g, c.fm, c.inset(), y + c.fm.getAscent(), label, text,
-				hovered && temple != null ? NativeTooltip.valueColor : labelColor, NativeTooltip.valueColor));
+				hovered && temple != null ? NativeTooltip.valueColor : labelColor, ink(text)));
 	}
 
 	/** XP left until every skill is 99: 0 once maxed, -1 when a skill isn't on the hiscores. */
@@ -109,7 +106,7 @@ public class SkillsTooltip extends TitleTooltip
 	String displayedXpText()
 	{
 		long xp = result != null ? result.getTotalXp() : -1;
-		return xp >= 0 ? grouped(xp) : "--";
+		return xp >= 0 ? grouped(xp) : MISSING;
 	}
 
 	int displayedRank()

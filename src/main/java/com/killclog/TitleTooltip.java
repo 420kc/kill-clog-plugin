@@ -37,6 +37,9 @@ public abstract class TitleTooltip extends NativeTooltip
 	protected static final Color STALE_RED = new Color(255, 60, 60);
 	protected static final Color CLOG_YELLOW = new Color(255, 255, 0);
 	protected static final Color MUTED_GRAY = new Color(148, 148, 148);
+	// What a card writes where it has no value yet, and for a player the hiscores answered without a rank.
+	static final String MISSING = "--";
+	static final String UNRANKED = "Unranked";
 	// Between the header's text and what sits at its right: a card's word, the Player Summary's sources.
 	static final int HEADER_CORNER_GAP = 8;
 	private static final int HEADER_ICON_GAP = 3;
@@ -105,6 +108,7 @@ public abstract class TitleTooltip extends NativeTooltip
 	/**
 	 * A word at the header's right on the title's line, with its icon before it: the Collection Log names its tier beside
 	 * the tier's icon, the Combat Summary its combat level and a skill's card its level.
+	 * A level not known yet is the missing mark, muted as it is everywhere.
 	 */
 	CardBody.Part headerWord(@Nullable String word, @Nullable Image icon, Font wordFont, Color color)
 	{
@@ -122,7 +126,7 @@ public abstract class TitleTooltip extends NativeTooltip
 				}
 				Font font = c.g.getFont();
 				c.g.setFont(fm.getFont());
-				c.g.setColor(color);
+				c.g.setColor(MISSING.equals(word) ? MUTED_GRAY : color);
 				c.g.drawString(word, x, c.inset() + ascent);
 				c.g.setFont(font);
 			}
@@ -223,7 +227,7 @@ public abstract class TitleTooltip extends NativeTooltip
 
 	protected static String progressCountText(int obtained, int total)
 	{
-		return (obtained < 0 ? "--" : String.valueOf(obtained))
+		return (obtained < 0 ? MISSING : String.valueOf(obtained))
 			+ "/" + (total < 0 ? "?" : String.valueOf(total));
 	}
 
@@ -236,13 +240,25 @@ public abstract class TitleTooltip extends NativeTooltip
 	/** Value-column text: a thousands-grouped count, or "--" when absent. */
 	protected static String scoreText(long value)
 	{
-		return value > 0 ? grouped(value) : "--";
+		return value > 0 ? grouped(value) : MISSING;
+	}
+
+	/** A rank as a card writes it: grouped, "Unranked" once the hiscores have answered without one, "--" until then. */
+	static String rankText(int rank, boolean answered)
+	{
+		return rank > 0 ? grouped(rank) : answered ? UNRANKED : MISSING;
+	}
+
+	/** A value's color: white, or muted for the two that say there is none, so neither reads as a number. */
+	static Color ink(String value)
+	{
+		return MISSING.equals(value) || UNRANKED.equals(value) ? MUTED_GRAY : NativeTooltip.valueColor;
 	}
 
 	/** Efficient-hours text: one decimal, thousands-grouped, "--" when absent. */
 	protected static String ehbText(double hours)
 	{
-		return hours >= 0 ? String.format(Locale.US, "%,.1f", hours) : "--";
+		return hours >= 0 ? String.format(Locale.US, "%,.1f", hours) : MISSING;
 	}
 
 	protected static String tierDisplayName(CombatAchievementResult ca)
@@ -267,7 +283,7 @@ public abstract class TitleTooltip extends NativeTooltip
 	static int drawLabelValue(Graphics2D g2, FontMetrics fm, int x, int y,
 		String label, String value)
 	{
-		return drawLabelValue(g2, fm, x, y, label, value, NativeTooltip.valueColor);
+		return drawLabelValue(g2, fm, x, y, label, value, ink(value));
 	}
 
 	/** An orange label with its value right after it; returns the pair's width. */
@@ -335,11 +351,11 @@ public abstract class TitleTooltip extends NativeTooltip
 		this.rank = rankLine("Rank: ", rank);
 	}
 
-	/** A rank as the header shows it: grouped in the value's colour, or "Unranked" in the label's. */
+	/** A rank as the header shows it; a header gets its rank only once the hiscores have answered. */
 	private static InfoLine rankLine(String label, int rank)
 	{
-		return rank > 0 ? new InfoLine(label, grouped(rank), NativeTooltip.valueColor)
-			: new InfoLine(label, "Unranked", labelColor);
+		String text = rankText(rank, true);
+		return new InfoLine(label, text, ink(text));
 	}
 
 	/** The header's lines under the title, in the order they paint: one list sizes, counts and paints them. */

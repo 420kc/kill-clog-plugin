@@ -29,6 +29,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 	private int totalBosses;
 	private long slayerXp = -1;
 	private int slayerRank = -1;
+	private boolean slayerRanked;
 	@Nullable
 	private int[] slayerLog;
 	private String mostKilled;
@@ -202,6 +203,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 			? hiscoreResult.getSkillXp(PanelData.SLAYER_CATEGORY) : -1;
 		slayerRank = hiscoreResult != null
 			? hiscoreResult.getSkillRank(PanelData.SLAYER_CATEGORY) : -1;
+		slayerRanked = hiscoreResult != null && hiscoreResult.isRankDataAvailable();
 		slayerLog = ClogHelper.clogCounts(PanelData.SLAYER_CATEGORY, clogResult);
 	}
 
@@ -255,9 +257,9 @@ public class PvmSummaryTooltip extends TitleTooltip
 			// green).
 			int points = caResult != null ? caResult.getTotalPoints() : -1;
 			int next = caResult != null ? caResult.nextTierPoints() : 0;
-			Color color = points >= 0 ? completionColor(points, next) : valueColor;
-			body.add(CardBody.line("Combat Achievements: ", caResult != null ? tierDisplayName(caResult) : "--"))
-				.add(CardBody.line("Points: ", points >= 0 ? progressCountText(points, next) : "--", color))
+			Color color = points >= 0 ? completionColor(points, next) : MUTED_GRAY;
+			body.add(CardBody.line("Combat Achievements: ", caResult != null ? tierDisplayName(caResult) : MISSING))
+				.add(CardBody.line("Points: ", points >= 0 ? progressCountText(points, next) : MISSING, color))
 				.add(CardBody.bar(points >= 0 ? (double) points / next : 0, color));
 		}
 		// The PvM tiles: the most killed boss, its kills over its log, its name in the band, opening its card; and Bosses,
@@ -289,7 +291,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 		// Slayer: XP and Rank from the hiscores, then clog progress when a synced log is known.
 		body.titled("Slayer")
 			.add(CardBody.line("XP: ", scoreText(slayerXp)))
-			.add(CardBody.line("Rank: ", scoreText(slayerRank)));
+			.add(CardBody.line("Rank: ", rankText(slayerRank, slayerRanked)));
 		if (slayerLog != null)
 		{
 			body.add(CardBody.line("Obtained: ", progressCountText(slayerLog[0], slayerLog[1]),
@@ -344,6 +346,6 @@ public class PvmSummaryTooltip extends TitleTooltip
 	/** Vanilla's hiscore formatter: up to three decimals, trailing zeros dropped. */
 	static String combatText(double combatLevel)
 	{
-		return combatLevel > 0 ? QuantityFormatter.formatNumber(combatLevel) : "--";
+		return combatLevel > 0 ? QuantityFormatter.formatNumber(combatLevel) : MISSING;
 	}
 }

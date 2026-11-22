@@ -190,7 +190,18 @@ final class CardBody
 
 	static Part line(String label, String value)
 	{
-		return line(label, value, NativeTooltip.valueColor);
+		return line(label, value, TitleTooltip.ink(value));
+	}
+
+	/**
+	 * What is left to a goal, over the bar that fills toward it in the game's yellow: the count, "--" while unknown,
+	 * and a green "Maxed" over a green bar once there.
+	 */
+	static Part toGo(String label, long left, boolean done, double share)
+	{
+		Color color = done ? TitleTooltip.CLOG_GREEN : TitleTooltip.CLOG_YELLOW;
+		return new CardBody().add(done ? line(label, "Maxed", color)
+			: line(label, left >= 0 ? TitleTooltip.grouped(left) : TitleTooltip.MISSING)).add(bar(share, color)).asPart();
 	}
 
 	// A bar's height and the room above it; its track is the card's ground darkened, whatever its color.

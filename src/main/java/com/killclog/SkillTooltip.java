@@ -75,11 +75,10 @@ public class SkillTooltip extends TitleTooltip
 	protected CardBody body()
 	{
 		CardBody body = new CardBody().add(headerWord(stats.levelText(), skillIcon, getTitleFont(), levelColor))
-			.add(CardBody.line(RANK_LABEL, stats.rankText(), stats.rankColor()))
-			.add(CardBody.line(XP_LABEL, stats.xpText(), stats.xpColor()))
-			.add(CardBody.line(XP_TO_LEVEL_LABEL, stats.xpToLevelText(), stats.xpToLevelColor()))
-			// The way through the level, in the game's yellow, then its green once Maxed, as the line above turns.
-			.add(CardBody.bar(stats.toNext(), stats.maxed ? CLOG_GREEN : CLOG_YELLOW));
+			.add(CardBody.line(RANK_LABEL, stats.rankText()))
+			.add(CardBody.line(XP_LABEL, stats.xpText()))
+			// The way through the level.
+			.add(CardBody.toGo(XP_TO_LEVEL_LABEL, stats.xpToLevel, stats.maxed, stats.toNext()));
 		if (sections.isEmpty())
 		{
 			return body;
@@ -101,8 +100,7 @@ public class SkillTooltip extends TitleTooltip
 				progressColor(items.obtainedCount(), total)));
 			if (countCategory != null && section.isCategory(countCategory))
 			{
-				log.add(CardBody.line(countLabel, count >= 0 ? grouped(count) : "--",
-					count >= 0 ? NativeTooltip.valueColor : MUTED_GRAY));
+				log.add(CardBody.line(countLabel, count >= 0 ? grouped(count) : MISSING));
 			}
 			log.add(grid(i, section, sprites.get(i)));
 		}
@@ -166,17 +164,17 @@ public class SkillTooltip extends TitleTooltip
 
 		String levelText()
 		{
-			return level > 0 ? String.valueOf(level) : "--";
+			return level > 0 ? String.valueOf(level) : MISSING;
 		}
 
 		String xpText()
 		{
-			return xp >= 0 ? grouped(xp) : "--";
+			return xp >= 0 ? grouped(xp) : MISSING;
 		}
 
 		String rankText()
 		{
-			return rank > 0 ? grouped(rank) : rankAvailable ? "Unranked" : "--";
+			return TitleTooltip.rankText(rank, rankAvailable);
 		}
 
 		/** The way from this level's XP to the next level's, 0 to 1: all of it once maxed, none while unknown. */
@@ -188,34 +186,6 @@ public class SkillTooltip extends TitleTooltip
 			}
 			long from = Experience.getXpForLevel(level);
 			return (double) (xp - from) / (Experience.getXpForLevel(level + 1) - from);
-		}
-
-		String xpToLevelText()
-		{
-			if (maxed)
-			{
-				return "Maxed";
-			}
-			return xpToLevel >= 0 ? grouped(xpToLevel) : "--";
-		}
-
-		private Color xpColor()
-		{
-			return xp >= 0 ? NativeTooltip.valueColor : KillClogColors.UNRANKED_COLOR;
-		}
-
-		private Color rankColor()
-		{
-			return rank > 0 ? NativeTooltip.valueColor : KillClogColors.UNRANKED_COLOR;
-		}
-
-		private Color xpToLevelColor()
-		{
-			if (maxed)
-			{
-				return CLOG_GREEN;
-			}
-			return xpToLevel >= 0 ? NativeTooltip.valueColor : KillClogColors.UNRANKED_COLOR;
 		}
 	}
 }
