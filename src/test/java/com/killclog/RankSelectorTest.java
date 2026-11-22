@@ -137,6 +137,7 @@ public class RankSelectorTest
 			loading.setData(selector.view(blue), null, false);
 			assertEquals("nor as 0 XP", "--", loading.displayedXpText());
 			assertEquals("and no hours bossed", -1, LookupQueries.ehb(selector.view(blue), null), 0);
+			assertEquals("nor a count of bosses killed", -1, LookupQueries.countBossesWithKc(selector.view(blue)));
 			selector.select(RankLeaderboard.HARDCORE);
 			requests.get("Blue" + RankLeaderboard.NORMAL).complete(result(AccountType.REGULAR, HiscoreTable.STANDARD, 100, 10000));
 			requests.get("Blue" + RankLeaderboard.HARDCORE).complete(result(AccountType.REGULAR, HiscoreTable.STANDARD, 7, 10000));
@@ -229,6 +230,7 @@ public class RankSelectorTest
 			absent.setData(ultimate, null, false);
 			assertEquals("no row there, so no XP there", "--", absent.displayedXpText());
 			assertEquals("and no hours bossed", -1, LookupQueries.ehb(ultimate, null), 0);
+			assertEquals("nor a count of bosses killed", -1, LookupQueries.countBossesWithKc(ultimate));
 
 			selector.select(RankLeaderboard.PURE);
 			assertEquals(-1, selector.view(base).getKc("Zulrah"));

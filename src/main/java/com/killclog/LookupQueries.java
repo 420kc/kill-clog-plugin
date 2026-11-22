@@ -39,9 +39,10 @@ final class LookupQueries
 		return PanelData.bossCount() + (beside ? 1 : 0);
 	}
 
-	static int countBossesWithKc(HiscoreResult result)
+	/** The bosses a player has killed; -1 with no hiscores or no boss on them (a board's stand-in row). */
+	static int countBossesWithKc(@Nullable HiscoreResult result)
 	{
-		if (result == null) return 0;
+		if (result == null || result.getBossKills().isEmpty()) return -1;
 		int count = 0;
 		for (int kc : result.getBossKills().values())
 		{

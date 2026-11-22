@@ -212,8 +212,8 @@ final class SummaryCards
 		tip.setData(
 			hiscore != null ? hiscore.getCombatLevelExact() : 0,
 			LookupQueries.sumBossKills(hiscore),
-			// No hiscores (the dormant panel): no count to show, not a count of none.
-			hiscore != null ? LookupQueries.countBossesWithKc(hiscore) : -1,
+			// No hiscores (the dormant panel) or a board with no row: no count to show, not a count of none.
+			LookupQueries.countBossesWithKc(hiscore),
 			LookupQueries.bossTotal(hiscore),
 			mostKilled,
 			mostKilled != null ? hiscore.getKc(mostKilled) : 0
