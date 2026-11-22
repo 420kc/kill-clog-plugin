@@ -241,11 +241,7 @@ final class TooltipDataBuilder
 	TooltipData buildPageData(String name, List<Integer> itemIds, ClogResult clogResult)
 	{
 		if (clogResult == null) return null;
-		Map<Integer, Integer> held = new HashMap<>();
-		for (ClogResult.ClogItem item : clogResult.allObtained())
-		{
-			held.merge(canonicalItemId(item.getId()), item.getCount(), Integer::max);
-		}
+		Map<Integer, Integer> held = obtainedCounts(clogResult.allObtained());
 
 		List<Integer> allItemsList = canonicalItemIds(itemIds);
 		Set<Integer> obtainedIds = new HashSet<>();
@@ -277,18 +273,9 @@ final class TooltipDataBuilder
 		int rank, String kcLabel, int kc, boolean rankTracked, ClogResult catalog)
 	{
 		List<Integer> canonicalItems = canonicalItemIds(itemIds);
-		return TooltipData.builder()
-			.name(displayName)
-			.rank(rank)
-			.totalItems(canonicalItems.size())
-			.allItemIds(canonicalItems)
-			.obtainedIds(new HashSet<>())
-			.obtainedCounts(new LinkedHashMap<>())
-			.itemNames(itemNamesFor(canonicalItems, catalog))
-			.rankTracked(rankTracked)
-			.kcLabel(kcLabel)
-			.kc(kc)
-			.build();
+		// The catalog's items with no player holding any: the count unknown, nothing obtained.
+		return itemData(displayName, -1, canonicalItems.size(), canonicalItems, new HashSet<>(), new LinkedHashMap<>(),
+			catalog).rank(rank).rankTracked(rankTracked).kcLabel(kcLabel).kc(kc).build();
 	}
 
 	private Map<Integer, String> itemNamesFor(List<Integer> itemIds, ClogResult clogResult)
