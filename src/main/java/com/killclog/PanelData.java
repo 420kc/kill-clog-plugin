@@ -89,7 +89,7 @@ final class PanelData
 		return tier.getName().replace("Clue Scrolls", "Clue scroll");
 	}
 
-	// Collection log book item, used for chat icons and plugin icon fallbacks.
+	// Collection Log book item, used for chat icons and plugin icon fallbacks.
 	static final int COLLECTION_LOG_ITEM_ID = 22711;
 
 	static final HiscoreSkill[] PVP_ACTIVITIES = {

@@ -1285,7 +1285,7 @@ public class PluginPublicationCharacterizationTest
 		}
 		settle();
 		verify(panel, never()).doLookup();
-		// A new collection log item still updates the panel, through the unlock.
+		// A new Collection Log item still updates the panel, through the unlock.
 		unlockMessage();
 		tickAndRunUnlocks();
 		verify(live).handleUnlock(eq("Twisted bow"), eq(-1), eq(-1), any(), any(), any(), eq(localClogCache), any(), any(),

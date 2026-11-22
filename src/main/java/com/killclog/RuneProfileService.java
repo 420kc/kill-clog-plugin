@@ -261,7 +261,7 @@ public class RuneProfileService
 		}
 	}
 
-	// Collection log provider lane.
+	// Collection Log provider lane.
 
 	/**
 	 * A player's Collection Log from RuneProfile. LookupSession and ComparisonController combine it with TempleOSRS's

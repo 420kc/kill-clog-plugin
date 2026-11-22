@@ -25,7 +25,7 @@ import org.junit.rules.TemporaryFolder;
 import static org.junit.Assert.*;
 
 /**
- * Parsing, cache-path, and intercepted HTTP tests for RuneProfile CA + collection log responses.
+ * Parsing, cache-path, and intercepted HTTP tests for RuneProfile CA + Collection Log responses.
  */
 public class RuneProfileServiceTest
 {

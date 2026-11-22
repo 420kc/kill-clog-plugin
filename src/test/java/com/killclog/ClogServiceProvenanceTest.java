@@ -220,7 +220,7 @@ public class ClogServiceProvenanceTest
 		return activeService(player, localDate, templeJson, "{\"data\":{\"info\":{}}}", requests, new AtomicInteger());
 	}
 
-	/** {@code requests} counts collection log requests, {@code statsRequests} stats ones; each URL gets its answer. */
+	/** {@code requests} counts Collection Log requests, {@code statsRequests} stats ones; each URL gets its answer. */
 	private static ClogService activeService(String player, String localDate, String templeJson, String statsJson,
 		AtomicInteger requests, AtomicInteger statsRequests) throws Exception
 	{

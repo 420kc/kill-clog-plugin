@@ -6,7 +6,7 @@ import org.junit.Test;
 import static org.junit.Assert.assertEquals;
 
 /**
- * Which time a sync sends for one key. The collection log's line is the game's current record and wins whenever
+ * Which time a sync sends for one key. The Collection Log's line is the game's current record and wins whenever
  * it was read. The game's other records (the adventure log Kill Clog read off the player's own screen, a kill seen)
  * outrank RuneLite's file; between them the faster is the newer.
  */

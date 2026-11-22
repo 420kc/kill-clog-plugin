@@ -14,7 +14,7 @@ import okhttp3.ResponseBody;
 import org.junit.Test;
 
 /**
- * What TempleOSRS's player stats answer becomes: the canonical name, and the account type the collection log
+ * What TempleOSRS's player stats answer becomes: the canonical name, and the account type the Collection Log
  * endpoint can't tell (a GIM). Anything missing, empty or malformed reads as nothing, never as an error. No network.
  */
 public class TempleStatsReadTest

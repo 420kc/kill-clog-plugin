@@ -5,7 +5,7 @@ import javax.annotation.Nullable;
 
 /**
  * What Kill Clog reads from TempleOSRS: one player's stats answer (player_stats.php's data) for their account type,
- * name and EHP, and the collection log answer's EHC. A figure Temple didn't send reads -1.
+ * name and EHP, and the Collection Log answer's EHC. A figure Temple didn't send reads -1.
  */
 final class TempleStats
 {
@@ -27,7 +27,7 @@ final class TempleStats
 		ehp = number(data, "Overall_ehp");
 	}
 
-	/** The collection log answer's EHC for the account's flavour: an ironman's own rates, or the main game's. */
+	/** The Collection Log answer's EHC for the account's flavour: an ironman's own rates, or the main game's. */
 	static double ehc(JsonObject clogData, @Nullable AccountType type)
 	{
 		return number(clogData, type != null && type != AccountType.REGULAR ? "ehc_im" : "ehc");

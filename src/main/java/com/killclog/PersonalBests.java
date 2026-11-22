@@ -7,7 +7,7 @@ import net.runelite.client.config.*;
 
 /**
  * A player's personal bests from the four places this client keeps them: RuneLite's own store ("personalbest",
- * which its chat commands write) and Kill Clog's three lanes, the adventure log, the collection log's line and the
+ * which its chat commands write) and Kill Clog's three lanes, the adventure log, the Collection Log's line and the
  * kills seen. Each key is a boss's name with an optional team size, each value seconds; they exist for the local
  * player only.
  *
@@ -118,7 +118,7 @@ final class PersonalBests
 
 	/**
 	 * A boss's time for each team size: RuneLite's store, then the game's own records over it (the adventure log, the
-	 * collection log's line and the kills seen), as {@link PbRecord#pick} ranks them. In each lane, the profile
+	 * Collection Log's line and the kills seen), as {@link PbRecord#pick} ranks them. In each lane, the profile
 	 * RuneLite chose for the account speaks for every team size it has; the ones it ignores (it logs "multiple
 	 * matching profiles") fill only the rest, their fastest. The one place the card and the sync choose a PB.
 	 */
@@ -188,7 +188,7 @@ final class PersonalBests
 
 	/**
 	 * The one name every lane's spelling of a boss reaches: the panel's ("Theatre of Blood: Hard Mode"), RuneLite's
-	 * store ("theatre of blood hard mode"), a kill count message's, an adventure log section's and a collection log
+	 * store ("theatre of blood hard mode"), a kill count message's, an adventure log section's and a Collection Log
 	 * page's. Lowercase, a mode's colon gone, a leading "the" gone, then pb-names.tsv for true renames.
 	 */
 	static String encounter(String name)
