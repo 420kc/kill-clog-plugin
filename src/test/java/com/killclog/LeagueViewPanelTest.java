@@ -390,7 +390,9 @@ public class LeagueViewPanelTest
 				assertTrue("your main log offers setup",
 					field(summary.invoke(field(panel, "summaryCards", SummaryCards.class), owner, row, null, "Me", null), "firstTimeSetup", Boolean.class));
 				String mainNotice = field(cell.cellCard(owner, null, 4, "Zulrah", row, "Me"), "notice", String.class);
-				assertFalse("not before the hiscores answer: every card waits for them",
+				// The panel writes Setup on the cell as soon as your own log comes back empty, before the hiscores answer,
+				// so the card behind that cell offers setup then too.
+				assertTrue("already while the hiscores are on their way",
 					field(summary.invoke(field(panel, "summaryCards", SummaryCards.class), owner, null, null, "Me", null), "firstTimeSetup", Boolean.class));
 				session.readLeague("demonic-pacts", null);
 				assertFalse("a League read from another world never does",

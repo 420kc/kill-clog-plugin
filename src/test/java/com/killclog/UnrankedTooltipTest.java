@@ -118,6 +118,16 @@ public class UnrankedTooltipTest
 			assertNotNull(card.getClass().getSimpleName(), TestViews.textAt(image, "--", small, muted));
 			assertNull(card.getClass().getSimpleName(), TestViews.textAt(image, "--", small, NativeTooltip.valueColor));
 		}
+		// Each tile with a count writes its "--" muted: the Bosses tile, the card's first, and the five PvP tiles, its
+		// last. The raids' tiles between them rest with no count at all.
+		BufferedImage whole = TooltipController.cardImage(restingCombat);
+		java.util.List<java.awt.Point> tiles = new java.util.ArrayList<>(TestViews.tiles(whole));
+		tiles.subList(1, tiles.size() - 5).clear();
+		assertEquals(6, tiles.size());
+		for (java.awt.Point tile : tiles)
+		{
+			assertTrue("a muted count on the tile at " + tile, TestViews.tileHas(whole, tile, muted));
+		}
 		// The Combat Summary's level beside its title too: grey there, with nothing near a number's white (the title's
 		// larger font is smoothed, so this reads shades where the lines above read exact pixels).
 		BufferedImage top = TestViews.paint(restingCombat);
