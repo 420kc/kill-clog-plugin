@@ -157,7 +157,7 @@ final class RankSelector extends JPanel
 	String logNotice(HiscoreResult view)
 	{
 		String blank = blankNotice(view);
-		return blank != null ? blank : active().label.replace(" Ironman", "") + " collection log not recorded";
+		return blank != null ? blank : active().label.replace(" Ironman", "") + " Collection Log not recorded";
 	}
 
 	private void reload()

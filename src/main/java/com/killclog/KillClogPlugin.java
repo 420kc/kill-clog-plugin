@@ -778,7 +778,7 @@ public class KillClogPlugin extends Plugin
 		String hardcoreName = session.getName();
 		if (hardcoreXp > 0 && localClogCache.startOverOnReset(hardcoreName, hardcoreXp, settledNow))
 		{
-			chatNotifier.send(ChatNotice.SYNC_RESULT, "Kill Clog started your collection log over for your new run.");
+			chatNotifier.send(ChatNotice.SYNC_RESULT, "Kill Clog started your Collection Log over for your new run.");
 			// This tick's counter reads went to the run that ended: the fresh log takes the new run's, gambles too.
 			reconcileClogTotalsFromVarps();
 			ownLogServing(localClogCache, hardcoreName);
@@ -789,7 +789,7 @@ public class KillClogPlugin extends Plugin
 		{
 			chatNotifier.send(ChatNotice.SYNC_RESULT,
 				"Kill Clog followed your name change from '" + previousName
-				+ "' - your collection log came along.");
+				+ "' - your Collection Log came along.");
 			String renameName = session.getName();
 			if (renameName != null)
 			{

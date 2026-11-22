@@ -131,7 +131,7 @@ class SyncService
 		}
 		sending.run();
 
-		log.debug("Syncing collection log for '{}' to {} ({} items)",
+		log.debug("Syncing Collection Log for '{}' to {} ({} items)",
 			rsn, url, observedCount);
 		final int pbCount = personalBests != null ? personalBests.size() : 0;
 		String sent = withOverallXp(body, hardcoreXp);
@@ -222,7 +222,7 @@ class SyncService
 			rememberStructureHash(r.body);
 			boolean dryRun = responseSaysDryRun(r.body);
 			return new SyncResult(true, dryRun,
-				"Collection log synced! ("
+				"Collection Log synced! ("
 				+ observedCount + (observedCount == 1 ? " item" : " items")
 				+ (pbCount > 0 ? ", " + pbCount + (pbCount == 1 ? " pb" : " pbs") : "")
 				+ (dryRun ? ", not saved" : "") + ").");
@@ -262,7 +262,7 @@ class SyncService
 		// clients it turned away do not all come back together.
 		boolean restarting = r.code >= 502 && r.code <= 504;
 		return new SyncResult(false, false,
-			"Collection log sync failed. Try again later.",
+			"Collection Log sync failed. Try again later.",
 			restarting, restarting ? 15 + ThreadLocalRandom.current().nextInt(16) : 0);
 	}
 

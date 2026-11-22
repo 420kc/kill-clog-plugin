@@ -264,7 +264,7 @@ public class TraySummaryWiringTest
 			}
 			assertEquals(2, sides.size());
 			// Neither log has Zulrah's page: each side's notice goes by its own player's hiscores.
-			assertEquals("Rival hasn't synced a collection log", field(sides.get(1), "notice", String.class));
+			assertEquals("Rival hasn't synced a Collection Log", field(sides.get(1), "notice", String.class));
 			assertEquals("Loading catalog...", field(sides.get(0), "notice", String.class));
 			// And both titles open the boss's wiki page.
 			String wiki = PanelData.bossWikiPage(HiscoreSkill.ZULRAH);

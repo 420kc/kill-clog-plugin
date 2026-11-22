@@ -430,9 +430,9 @@ public class Cells
 	String noClogNotice(String rsn, @Nullable HiscoreResult hiscore)
 	{
 		return LookupSession.frozen(hiscore) ? ranks.logNotice(hiscore)
-			: rsn == null || rsn.isEmpty() ? "No collection log synced"
-			: lookupSession.logUnanswered(rsn) ? rsn + "'s collection log hasn't loaded"
-			: rsn + " hasn't synced a collection log";
+			: rsn == null || rsn.isEmpty() ? "No Collection Log synced"
+			: lookupSession.logUnanswered(rsn) ? rsn + "'s Collection Log hasn't loaded"
+			: rsn + " hasn't synced a Collection Log";
 	}
 
 	/** One log's card: the player's grid, or both players' side by side, the title opening the wiki. */

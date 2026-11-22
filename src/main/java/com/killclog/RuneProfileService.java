@@ -419,7 +419,7 @@ public class RuneProfileService
 		}
 		catch (Exception e)
 		{
-			log.debug("Failed to parse RuneProfile collection log: {}", e.getMessage());
+			log.debug("Failed to parse RuneProfile Collection Log: {}", e.getMessage());
 			return ClogParseOutcome.invalid();
 		}
 	}

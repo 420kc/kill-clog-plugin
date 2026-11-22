@@ -193,7 +193,7 @@ The six clue tiers and Shared Treasure Trail Rewards are separate pages. There i
 
 ## If a command cannot show a page
 
-- **collection log page not recognized:** use the full page name or an alias in the chart; arbitrary fragments are not matched.
+- **Collection Log page not recognized:** use the full page name or an alias in the chart; arbitrary fragments are not matched.
 - **no clog data:** no Collection Log data was available for the sender.
 - **page not synced:** the page is known, but the available snapshot has not captured it. This is not treated as zero progress.
 - **no clog items found:** no item definition was available for the resolved page.

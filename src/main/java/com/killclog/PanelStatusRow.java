@@ -22,7 +22,7 @@ import net.runelite.client.util.ImageUtil;
  */
 final class PanelStatusRow
 {
-	private static final String SYNC_HOVER_TEXT = "sync collection log";
+	private static final String SYNC_HOVER_TEXT = "sync Collection Log";
 	private static final String SYNC_FAILURE_HOVER_TEXT = "sync failed - click to retry";
 	private static final String CHARACTER_HOVER_TEXT = "publish character";
 	private static final String CHARACTER_DELETE_HOVER_TEXT = "delete character model";

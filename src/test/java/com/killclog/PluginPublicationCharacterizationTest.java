@@ -214,7 +214,7 @@ public class PluginPublicationCharacterizationTest
 		runClient();
 		assertEquals(1, executor.live());
 		settle();
-		verify(chatNotifier).send(ChatNotice.SYNC_RESULT, "Syncing collection log...");
+		verify(chatNotifier).send(ChatNotice.SYNC_RESULT, "Syncing Collection Log...");
 		verify(panel).showSyncProgress(true, "syncing...", false);
 		assertEquals(1, syncs.size());
 		verify(syncService).syncCollectionLog(you(),  any(),  any(),  any(),  any(),  eq(1),
@@ -554,7 +554,7 @@ public class PluginPublicationCharacterizationTest
 	private static SyncService.SyncResult restarting()
 	{
 		return new SyncService.SyncResult(false, false,
-			"Collection log sync failed. Try again later.", true, 20);
+			"Collection Log sync failed. Try again later.", true, 20);
 	}
 
 	@Test
@@ -583,7 +583,7 @@ public class PluginPublicationCharacterizationTest
 		settle();
 		assertEquals(1, syncs.size());
 
-		String failed = "Collection log sync failed. Try again later.";
+		String failed = "Collection Log sync failed. Try again later.";
 		syncs.get(0).complete(new SyncService.SyncResult(false, false, failed, true, 20));
 		settle();
 		// Nobody is watching an automatic sync: it waits twice the advised delay.
@@ -605,7 +605,7 @@ public class PluginPublicationCharacterizationTest
 		captureListener.run();
 		settle();
 
-		String failed = "Collection log sync failed. Try again later.";
+		String failed = "Collection Log sync failed. Try again later.";
 		syncs.get(0).complete(new SyncService.SyncResult(false, false, failed, true, 20));
 		settle();
 		syncs.get(1).complete(new SyncService.SyncResult(false, false, failed, true, 20));
@@ -2471,7 +2471,7 @@ public class PluginPublicationCharacterizationTest
 		syncs.get(0).complete(new SyncService.SyncResult(true, false, "Synced"));
 		settle();
 		assertEquals(java.util.Arrays.asList("main", "demonic-pacts"), sentModes());
-		verify(chatNotifier, times(1)).send(ChatNotice.SYNC_RESULT, "Syncing collection log...");
+		verify(chatNotifier, times(1)).send(ChatNotice.SYNC_RESULT, "Syncing Collection Log...");
 	}
 
 	@Test

@@ -25,7 +25,7 @@ public class SyncOutcomeTest
 				assertTrue(result.retryAfterSeconds >= 15 && result.retryAfterSeconds <= 30);
 				delays.add(result.retryAfterSeconds);
 				// Still the honest message, for when the retry fails too.
-				assertEquals("Collection log sync failed. Try again later.", result.message);
+				assertEquals("Collection Log sync failed. Try again later.", result.message);
 			}
 			// Spread across the window, so the clients a restart turned away do not return together.
 			assertTrue(delays.toString(), delays.size() >= 8);
@@ -73,7 +73,7 @@ public class SyncOutcomeTest
 		SyncService.SyncResult result = outcome(200, "{}");
 		assertTrue(result.ok);
 		assertFalse(result.retryAdvised);
-		assertEquals("Collection log synced! (12 items, 3 pbs).", result.message);
+		assertEquals("Collection Log synced! (12 items, 3 pbs).", result.message);
 	}
 
 	private SyncService.SyncResult outcome(int code, String body)

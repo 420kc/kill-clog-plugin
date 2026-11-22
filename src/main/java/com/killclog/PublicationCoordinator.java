@@ -44,7 +44,7 @@ final class PublicationCoordinator
 	// long. A walk that never pauses still sends a minute after its first capture.
 	static final int SYNC_DEBOUNCE_SECONDS = 10;
 	static final long SYNC_MAX_WAIT_MS = 60_000L;
-	private static final String SYNC_FAILED = "Collection log sync failed. See the client log.";
+	private static final String SYNC_FAILED = "Collection Log sync failed. See the client log.";
 	static final int NONE = -1;
 
 	private final KillClogConfig config;
@@ -598,7 +598,7 @@ final class PublicationCoordinator
 		AccountType accountType = main ? localAccountType.get() : null;
 		if (push.manual)
 		{
-			chatNotifier.send(ChatNotice.SYNC_RESULT, "Syncing collection log...");
+			chatNotifier.send(ChatNotice.SYNC_RESULT, "Syncing Collection Log...");
 		}
 		List<String> profileKeys = PersonalBests.profileKeys(configManager.getRSProfiles(), push.session.getAccountHash(),
 			main ? RuneScapeProfileType.STANDARD.name() : leagueProfileType.apply(gameMode));
@@ -1095,7 +1095,7 @@ final class PublicationCoordinator
 				.ifPresent(seconds -> pbs.put(boss.getName(), seconds));
 		}
 		log.debug("killclog sync pb gather: {} owned profiles, {} bosses from RuneLite's store, {} detailed pbs"
-			+ " (the store, the adventure log, the collection log, kills seen)", profileKeys.size(), pbs.size(), out.size());
+			+ " (the store, the adventure log, the Collection Log, kills seen)", profileKeys.size(), pbs.size(), out.size());
 		return out;
 	}
 }

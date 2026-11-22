@@ -14,7 +14,7 @@ public class ImgTooltip extends TitleTooltip
 {
 	private final int gridCols;
 	@Setter
-	private String notice = "No collection log synced";
+	private String notice = "No Collection Log synced";
 
 	private int totalItems;
 	private List<Integer> allItemIds;

@@ -365,7 +365,7 @@ class KillClogChatCommand
 		ClogTarget target = resolvePage(query, categoryKeys);
 		if (target == null && !categoryKeys.isEmpty())
 		{
-			replaceText(chatMessage, "collection log page not recognized; use its full name or a listed alias");
+			replaceText(chatMessage, "Collection Log page not recognized; use its full name or a listed alias");
 			return;
 		}
 
@@ -406,7 +406,7 @@ class KillClogChatCommand
 		}
 		if (target == null)
 		{
-			replaceText(chatMessage, "collection log page not recognized; use its full name or a listed alias");
+			replaceText(chatMessage, "Collection Log page not recognized; use its full name or a listed alias");
 			return;
 		}
 		final String label = target.label;

@@ -154,7 +154,7 @@ public class PanelStatusRowCharacterizationTest
 		edt(() ->
 		{
 			mouse(sync, MouseEvent.MOUSE_ENTERED, MouseEvent.NOBUTTON);
-			assertEquals("sync collection log", status.getText());
+			assertEquals("sync Collection Log", status.getText());
 			assertEquals(new Color(78, 240, 21), status.getForeground());
 			mouse(sync, MouseEvent.MOUSE_EXITED, MouseEvent.NOBUTTON);
 		});
@@ -233,7 +233,7 @@ public class PanelStatusRowCharacterizationTest
 			panel.showSyncResult(false, true, null);
 			assertNull(glowTimer("syncGlow"));
 			mouse(sync, MouseEvent.MOUSE_ENTERED, MouseEvent.NOBUTTON);
-			assertEquals("sync collection log", status.getText());
+			assertEquals("sync Collection Log", status.getText());
 			assertNull(sync.getToolTipText());
 		});
 	}
@@ -298,7 +298,7 @@ public class PanelStatusRowCharacterizationTest
 		edt(() ->
 		{
 			mouse(sync, MouseEvent.MOUSE_ENTERED, MouseEvent.NOBUTTON);
-			assertEquals("sync collection log", status.getText());
+			assertEquals("sync Collection Log", status.getText());
 			assertNull(sync.getToolTipText());
 			mouse(sync, MouseEvent.MOUSE_EXITED, MouseEvent.NOBUTTON);
 			mouse(character, MouseEvent.MOUSE_ENTERED, MouseEvent.NOBUTTON);
@@ -351,7 +351,7 @@ public class PanelStatusRowCharacterizationTest
 			assertEquals(CharacterStatus.RENDERING.text, status.getText());
 			panel.showCharacterPublishStatus(CharacterStatus.CLEAR, false, null);
 			mouse(sync, MouseEvent.MOUSE_ENTERED, MouseEvent.NOBUTTON);
-			assertEquals("sync collection log", status.getText());
+			assertEquals("sync Collection Log", status.getText());
 			assertNull(sync.getToolTipText());
 		});
 	}

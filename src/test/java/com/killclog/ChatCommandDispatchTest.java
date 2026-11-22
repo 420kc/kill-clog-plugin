@@ -61,7 +61,7 @@ public class ChatCommandDispatchTest
 	public void unknownMissingAndCompleteStatesAreDistinct() throws Exception
 	{
 		Harness harness = new Harness(pets());
-		assertTrue(harness.run("!kclog random events garbage").startsWith("collection log page not recognized"));
+		assertTrue(harness.run("!kclog random events garbage").startsWith("Collection Log page not recognized"));
 		assertTrue(harness.run("!kclog").startsWith("usage !kclog <collection-log page>"));
 		harness.result = null;
 		assertEquals("All Pets: no clog data", harness.run("!kclog pets"));

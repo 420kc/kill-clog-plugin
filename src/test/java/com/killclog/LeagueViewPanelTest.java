@@ -117,7 +117,7 @@ public class LeagueViewPanelTest
 			assertNull("no provider named the player", field(panel, "rsn", String.class));
 			assertEquals("Friend", panel.getDisplayedRsn());
 			// Their Collection Log card names them as every other card does, by the name looked up.
-			assertEquals("Friend hasn't synced a collection log",
+			assertEquals("Friend hasn't synced a Collection Log",
 				field(panel.clogInfoLabel().createToolTip(), "notice", String.class));
 			// Were that name your own, the same card would offer setup, by the name looked up.
 			panel.setLoggedInPlayer("Friend", AccountType.REGULAR);
@@ -526,7 +526,7 @@ public class LeagueViewPanelTest
 		{
 			assertEquals(5000, session.getHiscoreResult().getTotalXp());
 			assertNull(session.getClogResult());
-			assertEquals("Hardcore collection log not recorded", TestViews.statusText(status));
+			assertEquals("Hardcore Collection Log not recorded", TestViews.statusText(status));
 			ranks.select(RankLeaderboard.ULTIMATE);
 			assertEquals(-1, session.getHiscoreResult().getKc("Zulrah"));
 			assertNull(session.getClogResult());
