@@ -149,13 +149,25 @@ public class RuneProfileService
 		// The player logged in: their Combat Achievements are the game's, as kept here from this session or their last,
 		// and stand even when empty, so RuneProfile's never replace them. The summary is still asked for, so Sources
 		// can say whether they have a RuneProfile. Only where this PC has never read the game for them do RuneProfile's
-		// stand in, until the world settles and it is.
-		if (localCaCache != null && localCaCache.hasDataFor(playerName))
+		// stand in, and only until it has: an answer that lands after the game was read gives the game's.
+		CombatAchievementResult own = own(playerName);
+		if (own != null)
 		{
 			summary.exceptionally(ex -> null);
-			return CompletableFuture.completedFuture(localCaCache.getCached(playerName));
+			return CompletableFuture.completedFuture(own);
 		}
-		return summary.thenApply(held -> held != null ? rebased(held.combatAchievements) : null);
+		return summary.thenApply(held ->
+		{
+			CombatAchievementResult read = own(playerName);
+			return read != null ? read : held != null ? rebased(held.combatAchievements) : null;
+		});
+	}
+
+	/** The logged-in player's own tiers as this client holds them; null for anyone else, or with none held. */
+	@Nullable
+	private CombatAchievementResult own(String playerName)
+	{
+		return localCaCache != null ? localCaCache.getCached(playerName) : null;
 	}
 
 	private CompletableFuture<RuneProfileSummary> lookupSummary(String playerName)

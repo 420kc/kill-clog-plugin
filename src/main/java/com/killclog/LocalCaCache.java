@@ -209,7 +209,11 @@ public class LocalCaCache
 		data.saveFailed = true;
 	}
 
-	/** Stored CA for the logged-in player as a {@link CombatAchievementResult}, or null if none is held. */
+	/**
+	 * Stored CA for the logged-in player as a {@link CombatAchievementResult}, or null if none is held. It is the
+	 * game's word once this login has read it; a reading from an earlier session stands in until then, and a fuller
+	 * sync stands over it ({@link CombatAchievementResult#shown}).
+	 */
 	public synchronized CombatAchievementResult getCached(String name)
 	{
 		CaData data = active(name);
@@ -235,8 +239,9 @@ public class LocalCaCache
 		{
 			totals.put(tier, tier.totalTasks());
 		}
-		return CombatAchievementResult.fromGame(completed, totals,
-			caCatalog != null ? caCatalog.totals() : null);
+		Map<CombatAchievementTier, Integer> live = caCatalog != null ? caCatalog.totals() : null;
+		return served != null && served.equals(capturedIn) ? CombatAchievementResult.fromGame(completed, totals, live)
+			: CombatAchievementResult.of(completed, totals, live);
 	}
 
 	/** The tiers this login read from the game, for its sync; null before it has read them, so none from before go. */

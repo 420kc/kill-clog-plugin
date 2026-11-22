@@ -350,6 +350,34 @@ public class RuneProfileServiceTest
 	}
 
 	@Test
+	public void aRuneProfileAnswerLandingAfterTheGameWasReadNeverReplacesIt() throws Exception
+	{
+		// A new PC: nothing kept, so the login's lookup waits on RuneProfile, which is slow.
+		CountDownLatch release = new CountDownLatch(1);
+		OkHttpClient client = clanClient(chain -> release.await(5, TimeUnit.SECONDS));
+		LocalCaCache local = new LocalCaCache(new Gson(), new InlineScheduledExecutorService());
+		local.open(TestFolders.folder(temporaryFolder.newFolder()));
+		local.serve(new Session(1, "Self Probe", 1L));
+		service = new RuneProfileService(client, new Gson(), local);
+		try
+		{
+			CompletableFuture<CombatAchievementResult> asked = service.lookup("Self Probe");
+			// The world settles and the game is read while that answer is still out.
+			local.cacheResult("Self Probe", 1L, Map.of(CombatAchievementTier.EASY, 3));
+			release.countDown();
+			CombatAchievementResult late = asked.get(5, TimeUnit.SECONDS);
+			assertNotNull("the late answer is the game's, not RuneProfile's none", late);
+			assertEquals(3, TestViews.completed(late, CombatAchievementTier.EASY));
+		}
+		finally
+		{
+			release.countDown();
+			client.dispatcher().executorService().shutdownNow();
+			client.connectionPool().evictAll();
+		}
+	}
+
+	@Test
 	public void testActivePlayerKeepsLocalDataButLearnsRuneProfilePresence() throws Exception
 	{
 		AtomicInteger requests = new AtomicInteger();

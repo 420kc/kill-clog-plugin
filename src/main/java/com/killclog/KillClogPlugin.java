@@ -764,7 +764,7 @@ public class KillClogPlugin extends Plugin
 		if (sessionState.pendingCaRead() && captureLocalCa())
 		{
 			sessionState.setPendingCaRead(false);
-			// The login's lookup of you began before this reading, with no tiers to show.
+			// The login's lookup of you began before this reading, with last session's tiers.
 			SwingUtilities.invokeLater(() -> panel.onOwnCaRead(session.getName()));
 		}
 		autoLookup(session);

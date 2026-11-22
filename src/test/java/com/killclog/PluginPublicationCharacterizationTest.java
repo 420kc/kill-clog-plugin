@@ -1136,6 +1136,12 @@ public class PluginPublicationCharacterizationTest
 		{
 		});
 		verify(panel).onOwnCaRead(RSN);
+		// One reading, handed over once: nothing reads the game again until a tier's varbit moves.
+		ticks(5);
+		SwingUtilities.invokeAndWait(() ->
+		{
+		});
+		verify(panel).onOwnCaRead(RSN);
 	}
 
 	/** An empty log that's set up (a new account, a fresh Hardcore Worlds run) is ready at login and catches up. */

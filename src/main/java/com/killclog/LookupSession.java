@@ -341,7 +341,7 @@ public class LookupSession
 
 	/**
 	 * Take your own Combat Achievements as the game has them now, with no new lookup. A login looks you up at once,
-	 * while the game's tiers are read only once the world has settled, so that lookup began with none.
+	 * while the game's tiers are read only once the world has settled, so that lookup began with last session's.
 	 */
 	void refreshLocalCa(String player, @Nullable String localRsn)
 	{

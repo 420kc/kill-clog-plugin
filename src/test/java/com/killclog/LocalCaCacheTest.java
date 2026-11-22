@@ -82,7 +82,13 @@ public class LocalCaCacheTest
 		assertTrue("the card has last session's tiers at once", cache.hasDataFor("Tester"));
 		assertEquals(4, TestViews.completed(cache.getCached("Tester"), CombatAchievementTier.EASY));
 		assertNull("a sync still sends only what this login read", cache.thisLogin(login));
+		// Until the game is read this login (it never is on a League world), a fuller sync stands over that reading.
+		CombatAchievementResult sync = CombatAchievementResult.of(Map.of(CombatAchievementTier.EASY, 30),
+			Map.of(CombatAchievementTier.EASY, 33));
+		assertSame(sync, CombatAchievementResult.shown(cache.getCached("Tester"), sync));
 		cache.cacheResult("Tester", HASH, Map.of(CombatAchievementTier.EASY, 5));
+		assertNotSame("the game, read this login, stands over any sync", sync,
+			CombatAchievementResult.shown(cache.getCached("Tester"), sync));
 		assertEquals(5, TestViews.completed(cache.getCached("Tester"), CombatAchievementTier.EASY));
 		assertNotNull(cache.thisLogin(login));
 
