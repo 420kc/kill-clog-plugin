@@ -6,12 +6,10 @@ import java.util.function.*;
 import lombok.*;
 import net.runelite.api.clan.ClanTitle;
 
-/**
- * Parsed collection log data for a player from the active provider.
- */
+/** A player's Collection Log as one source gave it, or as chosen and combined from several. */
 public class ClogResult
 {
-	/** Canonical player name with best-known capitalization from the provider */
+	/** The player's name, capitalized as its source writes it. */
 	@Getter
 	private final String playerName;
 	/** category key -> list of obtained items with counts */
@@ -114,10 +112,9 @@ public class ClogResult
 	}
 
 	/**
-	 * Shallow combine copy: shares the item/category maps with the source
-	 * (they are read-only after construction, except itemNames, whose shared
-	 * concurrent map deliberately keeps the name-resolution cache warm across
-	 * lookups). Only identity, account type, and provenance flags are per-copy.
+	 * A copy for a combine that shares its source's item and page maps: they are never written after construction,
+	 * except itemNames, whose one shared map keeps the names already found for the next lookup. Only the name, the
+	 * account type and where the log came from belong to the copy.
 	 */
 	private ClogResult(ClogResult source, AccountType accountType)
 	{
@@ -150,10 +147,9 @@ public class ClogResult
 	}
 
 	/**
-	 * Combine result carrying this data with per-combine provenance. Cached
-	 * provider/killclog instances are shared across overlapping lookups whose
-	 * legs can resolve differently (timeouts, cancellations), so a combine
-	 * never changes them: every combine returns its own copy.
+	 * This log with the sources a combine found it in. A cached answer is shared by lookups that overlap, and their
+	 * requests can end differently (a timeout, a cancel), so a combine never changes it: each returns a copy of its
+	 * own.
 	 */
 	private ClogResult copyWithProvenance(boolean temple, boolean runeProfile, boolean killclog,
 		AccountType fallbackType)
@@ -173,9 +169,8 @@ public class ClogResult
 	}
 
 	/**
-	 * Stamp a result at the provider boundary without mutating a cached instance.
-	 * Fanout combines may receive local fallback data in a provider-shaped slot,
-	 * so argument position is never sufficient evidence of provenance.
+	 * Mark where a log came from as it leaves its source, on a copy, never the cached one. A combine can be handed your
+	 * own log in the place a site's would be, so the place it sits in never says where it came from.
 	 */
 	ClogResult withSources(boolean temple, boolean runeProfile, boolean killclog)
 	{
@@ -323,8 +318,8 @@ public class ClogResult
 		{
 			return null;
 		}
-		// Provenance comes from provider-stamped inputs, never argument position:
-		// the Temple-shaped leg can legitimately contain unmarked local data.
+		// Where the log came from is what each was marked with, never the place it was handed in: your own log can sit
+		// where TempleOSRS's would.
 		ClogResult loser = winner == temple ? rp : temple;
 		return winner.copyWithProvenance(either(temple, rp, ClogResult::isFromTemple),
 			either(temple, rp, ClogResult::isFromRuneProfile), either(temple, rp, ClogResult::isFromKillclog),
@@ -414,7 +409,7 @@ public class ClogResult
 		return result != null && coverageCount(result) * 10L >= result.uniqueObtained * 9L;
 	}
 
-	/** Distinct itemized coverage, deliberately ignoring the varp counter. */
+	/** How many different items the log lists, whatever the game's counter says. */
 	static int coverageCount(ClogResult result)
 	{
 		Set<Integer> distinct = new HashSet<>();
@@ -497,9 +492,8 @@ public class ClogResult
 
 	private static int obtainedCount(ClogResult result)
 	{
-		// Distinct ids, not a per-category sum: one item can sit in several
-		// categories, and a duplicate-heavy partial result must not outcount
-		// a genuinely fuller one.
+		// Different items, not a sum over pages: one item can sit on several pages, and a part of a log that repeats
+		// items must not outcount a truly fuller one.
 		return result.uniqueObtained >= 0 ? result.uniqueObtained : coverageCount(result);
 	}
 
@@ -512,10 +506,9 @@ public class ClogResult
 		private final int id;
 		private final int count;
 		private final String date;
-		// Provenance captured at the live unlock moment, when the game's
-		// kill-count message landed just before the clog message. 0 / null
-		// mean unknown: provider data, full log captures, and pre-capture cache
-		// files never carry these.
+		// Where the item came from, taken as it unlocked: the game's kill-count message just before the Collection
+		// Log's. 0 and null mean unknown: a site's log, a whole-log walk and files written before this was kept never
+		// carry them.
 		private final int obtainedAtKc;
 		private final String obtainedFrom;
 

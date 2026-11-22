@@ -1,8 +1,5 @@
 /*
  * Copyright (c) 2026, 420 kc <dyl@420kc.dev>
- * Full-width boss list in the hiscores' own order: the list-style alternative
- * to the boss grid. One row per boss - [icon] name, colored kc - reusing the
- * grid's tooltip routing so every row opens the same clog popup as its cell.
  */
 package com.killclog;
 
@@ -18,14 +15,15 @@ import net.runelite.client.hiscore.HiscoreSkill;
 import net.runelite.client.ui.*;
 
 /**
- * The boss cells as a list. Rows mirror the grid's labels instead of working the values out again: the grid is always
- * built, even while hidden, and each row listens to its grid label's text, color and icon. So whatever writes a label
- * (a search starting, results landing, the completionist highlighter) reaches the list with no wiring of its own, and
- * the two views can't disagree.
+ * The boss cells as a list, one full-width row per boss in the hiscores' own order: its icon, its name and its coloured
+ * kill count, opening the same card as its cell. Rows mirror the grid's labels instead of working the values out again:
+ * the grid is always built, even while hidden, and each row listens to its grid label's text, color and icon. So
+ * whatever writes a label (a search starting, results landing, the completionist highlighter) reaches the list with no
+ * wiring of its own, and the two views can't disagree.
  *
  * One pause, on purpose: while comparison holds the grid on screen the mirror skips text and color, so comparison's
- * rewrites on each hover never reach the hidden rows; leaving comparison rewrites both, which brings them back in
- * step. Icons keep mirroring throughout: comparison never writes icons, and a sprite that loads mid-comparison would
+ * rewrites on each hover never reach the hidden rows; leaving comparison rewrites both, which brings them back in step.
+ * Icons keep mirroring throughout: comparison never writes icons, and a sprite that loads mid-comparison would
  * otherwise be lost for good (setting the same ImageIcon later fires no change). {@link #resyncAll()} backs all of it
  * up whenever the list is about to show.
  */
@@ -58,8 +56,8 @@ public class BossListView
 	}
 
 	/**
-	 * @param mirrorActive false while the grid is the forced view (compare);
-	 * the mirror skips those writes and the exit rewrite resyncs the rows
+	 * {@code mirrorActive} is false while a comparison holds the grid on screen: the mirror skips text and color then,
+	 * and leaving the comparison brings the rows back in step.
 	 */
 	public BossListView(TooltipController tooltipController, Cells cells, ClogPages pages, KillClogConfig config,
 		BooleanSupplier mirrorActive)
@@ -81,11 +79,9 @@ public class BossListView
 		root.setLayout(new BoxLayout(root, BoxLayout.Y_AXIS));
 		root.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 
-		// PanelData.BOSSES is the Jagex hiscores order: near-alphabetical with
-		// its deliberate pairings kept (Nightmare then Phosani's,
-		// Gauntlet then Corrupted). The list keeps that order rather
-		// than imposing a strict sort - players have already scanned this
-		// exact order in the game's own hiscores.
+		// PanelData.BOSSES is the Jagex hiscores' order: nearly alphabetical, with its pairs kept together (the
+		// Nightmare then Phosani's, the Gauntlet then the Corrupted). The list keeps it, since players already know
+		// this order from the game's own hiscores.
 		root.add(searchRow());
 		// A strip like the activities separator, in its gray and height, sets the search apart from the first boss.
 		JPanel divider = new JPanel();
@@ -107,9 +103,8 @@ public class BossListView
 	}
 
 	/**
-	 * Re-copy every row from its grid label. Called before the list shows,
-	 * so it always opens on grid truth regardless of what the paused mirror
-	 * skipped - the structural backstop for the pause contract above.
+	 * Copy every row from its grid label again. Called before the list shows, so it always opens matching the grid,
+	 * whatever the paused mirror skipped.
 	 */
 	public void resyncAll()
 	{
@@ -126,9 +121,8 @@ public class BossListView
 	}
 
 	/**
-	 * Subscribe the row to its grid label: one listener, registered under
-	 * each mirrored property name. Named registration keeps it off the
-	 * label's unrelated property traffic (tooltips flip on every lookup).
+	 * The row listens to its grid label for the properties it mirrors, each by name, so the label's other changes (its
+	 * tooltip flips on every lookup) never reach it.
 	 */
 	private void installMirror(HiscoreSkill boss, Cells cells)
 	{
@@ -141,10 +135,9 @@ public class BossListView
 		row.gridLabel = gridLabel;
 		PropertyChangeListener mirror = e ->
 		{
-			// Icons pass the pause: comparison never writes them, and an
-			// async sprite load landing mid-compare is the only icon event
-			// there is - skip it and the post-exit render reapplies the same
-			// ImageIcon object, which fires nothing to catch the row up.
+			// Icons pass the pause: a comparison never writes them, and a sprite that finishes loading during one is
+			// the only icon change there is. Skipped, it would be lost: leaving the comparison sets the same ImageIcon
+			// again, which fires nothing.
 			if ("icon".equals(e.getPropertyName()) || mirrorActive.getAsBoolean())
 			{
 				sync(row, gridLabel, e.getPropertyName());
@@ -181,9 +174,8 @@ public class BossListView
 				row.name.setForeground(gridLabel.getForeground());
 				break;
 			case "icon":
-				// The grid renders the exact icon the row wants (same 20x20
-				// pipeline, dim state decided by renderBossValue), so mirror
-				// the object itself; any future icon writer is covered too.
+				// The grid's label already holds the icon the row wants (the same 20x20, dimmed or not by
+				// renderBossValue), so the row takes the object itself, whoever wrote it.
 				row.icon.setIcon(gridLabel.getIcon());
 				break;
 			default:
@@ -196,9 +188,8 @@ public class BossListView
 	{
 		Row row = new Row();
 
-		// All three labels carry the boss tooltip so the whole row pops the
-		// clog popup in hover mode - icon and kc included, no dead zones.
-		// The icon itself arrives via the mirror when the grid's loads.
+		// All three labels carry the boss's card, so in hover mode the whole row opens it, the icon and the kill count
+		// included. The icon itself arrives through the mirror when the grid's loads.
 		row.icon = bossTooltipLabel(boss, cells);
 		row.icon.setPreferredSize(new Dimension(24, ROW_HEIGHT));
 		row.icon.setHorizontalAlignment(JLabel.CENTER);
@@ -220,9 +211,8 @@ public class BossListView
 
 		JPanel panel = rowPanel(row.icon, row.name, ROW_HEIGHT);
 		panel.add(row.kc, BorderLayout.EAST);
-		// Outline color follows the kc label (mirrored from the grid, so the
-		// completion highlighter shows through, same as the grid cell); the
-		// name stays the popup anchor for bare-cell presses.
+		// The outline takes the kill count's color (mirrored from the grid, so the completion highlighter shows as it
+		// does on the cell); a press on the bare row opens the card where the name is.
 		tooltipController.addCellHoverEffect(panel, row.kc, row.name, row.icon, row.kc);
 
 		row.panel = panel;

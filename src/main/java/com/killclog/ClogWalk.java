@@ -214,8 +214,8 @@ final class ClogWalk
 	}
 
 	/**
-	 * Search starts a full capture before script 4100 streams the obtained
-	 * entries. Automatic and manual requests share the same completeness checks.
+	 * The Search click starts a whole-log walk, before script 4100 sends each obtained item. A walk the plugin asked
+	 * for and one the player began are checked for completeness alike.
 	 */
 	void onCollectionLogSearch(Client client, ClogIndex clogIndex,
 		LocalClogCache localClogCache, KillClogChatNotifier chatNotifier)
@@ -293,9 +293,8 @@ final class ClogWalk
 			return;
 		}
 
-		// The collection-log counters can settle after the Search menu click.
-		// Re-read them before accepting the stream so an early zero cannot make
-		// a partial walk look like a valid empty or one-item first capture.
+		// The log's counters can arrive after the Search click. They are read again before the walk is accepted, so an
+		// early zero can't pass a part of a walk off as a true empty log or a first item.
 		int reportedCount = Math.max(walk.clogCount,
 			client.getVarpValue(VarPlayerID.COLLECTION_COUNT));
 		int reportedTotal = Math.max(walk.clogTotal,

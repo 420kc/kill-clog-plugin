@@ -1,10 +1,5 @@
 /*
  * Copyright (c) 2026, 420 kc <dyl@420kc.dev>
- * Owns the red-side comparison subsystem for Kill Clog: state, async fan-out
- * for the second player's hiscore, clog, and CA data, plus the compare-side
- * state. UI dispatch is downstream via {@link Listener}.
- * Reads the primary player's results read-only through {@link LookupSession}
- * getters.
  */
 package com.killclog;
 
@@ -19,45 +14,41 @@ import net.runelite.client.hiscore.HiscoreSkill;
 import net.runelite.client.ui.ColorScheme;
 
 /**
- * Red-side comparison lifecycle. Subscribers receive typed events through
- * {@link Listener}; this class owns comparison state while the panel owns the
- * visible widgets.
+ * A comparison with a second player, the rival, in red beside the looked-up player's blue: its lookup of the rival's
+ * hiscore, log and Combat Achievements, what a comparison holds while it is on, and the values and cards its cells
+ * show. It tells the panel each step through {@link Listener}; the panel keeps the widgets, and the looked-up player's
+ * results are only read, from {@link LookupSession}.
  *
- * <p>Threading mirrors {@link LookupSession}: lifecycle methods run on the
- * EDT, and the owned {@link LookupFanout} bridges service futures back to the
- * EDT behind its version-stamped stale-result gate.
+ * As there, its methods run on the Swing thread, and its own {@link LookupFanout} brings each answer back to it,
+ * dropping one a newer lookup has overtaken.
  */
 public class ComparisonController
 {
-	/**
-	 * Receives lifecycle events from a {@link ComparisonController}. All
-	 * methods are invoked on the EDT.
-	 */
+	/** What a comparison tells the panel, always on the Swing thread. */
 	public interface Listener
 	{
-		/** Comparison mode just entered. Panel should stop rendering single-player cells and route through the controller. */
+		/** A comparison began: the cells are this controller's to draw until it ends. */
 		void onComparisonEnter(String redRsn);
 
-		/** Comparison mode just exited. Panel should restore single-player cells. */
+		/** The comparison ended: the panel draws one player's cells again. */
 		void onComparisonExit();
 
-		/** Red-side data arrived. Panel should trigger a cell + summary-bar re-render via the controller's render hooks. */
+		/** More of the rival arrived: the cells and the header are drawn again. */
 		void onCompareDataReady();
 
 		/** The comparison on screen took a later log for its rival: redraw it as on entry, leaving the search bar be. */
 		void onCompareClogReady();
 
-		/** Transient comparison lookup flavor text changed. Panel should show it in the normal search status line. */
+		/** A line about the rival's lookup, for the search status line. */
 		void onCompareStatus(String msg, Color color);
 
-		/** Red lookup failed. Panel should return the search row to its idle compare state. */
+		/** The rival's lookup failed: the search row goes back to waiting for a name to compare. */
 		void onCompareError(String player, Throwable err);
 	}
 
 	/**
-	 * Hooks into the panel for the few widgets this controller writes to that
-	 * don't live on {@link Cells}: the summary bar (playerName, clogInfoLabel)
-	 * and the standalone combat + total level cells.
+	 * The few widgets a comparison writes that {@link Cells} doesn't hold: the header's name and log count, and the
+	 * combat and total level cells.
 	 */
 	public interface CellRenderTarget
 	{
@@ -144,10 +135,7 @@ public class ComparisonController
 
 	}
 
-	/**
-	 * Red-side transport: version stamps, EDT bridging, and timeout policy
-	 * shared with the primary side, in its own version space.
-	 */
+	/** The rival's requests, stamped and timed as the looked-up player's are and counted apart from them. */
 	private final LookupFanout fanout;
 
 	private final Map<HiscoreSkill, TooltipData> compareTooltipDataMap = new LinkedHashMap<>();
@@ -222,9 +210,8 @@ public class ComparisonController
 	// Lifecycle
 
 	/**
-	 * Enter comparison mode: build the per-cell comparison tooltip data and
-	 * fire {@link Listener#onComparisonEnter} for UI dispatch. Caller must
-	 * have committed one complete player snapshot first.
+	 * Begin the comparison: build each cell's card for the rival and tell the panel ({@link
+	 * Listener#onComparisonEnter}). The rival's hiscore and log are committed, whole, before this.
 	 */
 	public void enter()
 	{
@@ -354,9 +341,8 @@ public class ComparisonController
 				return;
 			}
 
-			// Clog fires only after the red player proved real: comparison
-			// entry needs the hiscore side regardless, so the sequencing
-			// costs nothing and spares provider calls on typos.
+			// The log is asked only once the hiscores know the rival: a comparison needs the hiscore anyway, so the
+			// wait costs nothing and a mistyped name asks no log site.
 			fanout.fetchClog(redPlayer, redIsSelf, thisLookup,
 				clogRes -> commit(pending, result, clogRes),
 				() -> commit(pending, result, null));
@@ -479,10 +465,7 @@ public class ComparisonController
 		return tip;
 	}
 
-	/**
-	 * Wrap the two players' single tooltips into one side-by-side comparison
-	 * card, named and colored per player.
-	 */
+	/** Both players' own cards side by side as one, each under its player's name and colour. */
 	public JToolTip wrapSideBySide(JComponent owner, JToolTip blueTip, JToolTip redTip)
 	{
 		TitleTooltip.scrollTogether(blueTip, redTip);
@@ -525,9 +508,8 @@ public class ComparisonController
 	}
 
 	/**
-	 * Wire the hover listeners that swap a comparison cell's blue/red values to
-	 * each player's completion colors while hovered. Shared by every dual-value
-	 * cell: bosses, activities, and skills.
+	 * While a comparison cell is hovered, its two values wear each player's completion colours in place of blue and
+	 * red. Every cell with two values takes it: bosses, activities and skills.
 	 */
 	public void installCompareCellHover(JPanel cell, JLabel label)
 	{
@@ -585,8 +567,7 @@ public class ComparisonController
 	}
 
 	/**
-	 * Render comparison identity in the summary bar, or restore single-player
-	 * display when comparison mode is off.
+	 * The header in a comparison: both names in their colours, each with its badge. Out of one, the one player's again.
 	 */
 	public void updateInfoBar()
 	{
@@ -627,10 +608,8 @@ public class ComparisonController
 	}
 
 	/**
-	 * Refresh every cell on the panel for comparison mode (or restore each
-	 * cell to single-player display when comparison is off). Iterates the
-	 * boss / activity / clue-tier label maps + the standalone cells (combat,
-	 * total).
+	 * Every cell drawn for the comparison, or back to the one player's once it is off: bosses, activities, clue tiers,
+	 * and the combat and total level cells.
 	 */
 	public void updateAllCells()
 	{

@@ -86,9 +86,8 @@ final class AdvLogPbs
 	/* package */ static final String KEY_PREFIX = "advlogpb.";
 
 	private static final Pattern TITLE_PATTERN = Pattern.compile("The Exploits of (.+)");
-	// Chat Commands' pattern for an Adventure Log pb line, verbatim: "Overall time" and
-	// "(former)" lines intentionally fall through, and "-" (no time) never
-	// matches the time group.
+	// Chat Commands' pattern for an Adventure Log PB line, as it writes it: an "Overall time" or "(former)" line
+	// matches nothing, and neither does "-", a boss with no time.
 	private static final String TEAM_SIZES = "(?<teamsize>\\d+(?:\\+|-\\d+)? players?|Solo)";
 	private static final Pattern PB_PATTERN = Pattern.compile(
 		"Fastest (?:kill|run|Room time)(?: - \\(Team size: \\(?" + TEAM_SIZES + "\\)\\)?)?: (?<time>[0-9:]+(?:\\.[0-9]+)?)");
@@ -159,7 +158,10 @@ final class AdvLogPbs
 		return matcher.find() ? matcher.group(1) : null;
 	}
 
-	/** Owner gate with the nbsp/tag hygiene Chat Commands' raw compare lacks. */
+	/**
+	 * Whether the log is the local player's, by their names as names compare everywhere here; Chat Commands compares
+	 * the raw text, tags and non-breaking spaces included.
+	 */
 	static boolean sameName(String localName, String owner)
 	{
 		return localName != null && owner != null
@@ -167,10 +169,9 @@ final class AdvLogPbs
 	}
 
 	/**
-	 * Parse the Counters scroll into variant pb keys -> seconds. Lines arrive
-	 * tag-stripped; the walk is Chat Commands' own (section title, then pb lines
-	 * until a blank), with team sizes normalized exactly the way it
-	 * stores them ("1 player" -> solo, "2 player" -> "2 players").
+	 * Reads the Counters scroll into PB keys and their seconds. Lines arrive with their tags stripped. It walks as Chat
+	 * Commands does (a section's title, then its PB lines until a blank one) and names team sizes as Chat Commands
+	 * stores them ("1 player" is solo, "2 player" is "2 players").
 	 */
 	/* package */ static Map<String, Double> parseCounters(String[] text)
 	{
@@ -238,9 +239,8 @@ final class AdvLogPbs
 	}
 
 	/**
-	 * Read the loaded Counters scroll and persist every parsed pb, min-wins
-	 * per key. Returns how many keys were recorded or improved. Client thread
-	 * (widget + config access).
+	 * Read the loaded Counters scroll and keep every PB it holds, the faster of it and the one already kept. Returns
+	 * how many were new or faster. Client thread (widgets and config).
 	 */
 	int harvest(Client client)
 	{
@@ -265,9 +265,8 @@ final class AdvLogPbs
 				recorded++;
 			}
 		}
-		// Both counts, always: a repeat visit legitimately records nothing
-		// (min-wins keeps the existing time), and a silent zero is
-		// indistinguishable from a parse that never ran.
+		// Both counts, always: a second visit rightly records nothing (the time kept is already as fast), and a bare
+		// zero would look the same as a scroll that was never read.
 		log.debug("adventure log harvest: {} lines, parsed {} pbs, {} new or improved",
 			text.length, parsed.size(), recorded);
 		return recorded;

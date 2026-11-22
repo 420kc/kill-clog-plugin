@@ -1,10 +1,5 @@
 /*
  * Copyright (c) 2026, 420 kc <dyl@420kc.dev>
- * Owns the cells of the kill clog panel: builds them, holds the labels,
- * caches tooltip + icon data, renders the looked-up player's values, and
- * routes between single-player and dual-player tooltips. KillClogPanel
- * (layout) and ComparisonController (the comparison's values) talk to Cells
- * directly.
  */
 package com.killclog;
 
@@ -22,10 +17,9 @@ import net.runelite.client.ui.*;
 import net.runelite.client.util.*;
 
 /**
- * Per-skill {@link JLabel} cells, their tooltip data caches, the helpers that
- * construct them, and the renderers that fill them with the looked-up player's
- * values (ComparisonController fills in a comparison's). Single source of truth
- * for "what cells does the panel show, and how do they hover."
+ * The panel's cells: it builds them, holds their labels, keeps each one's card data and icons, writes the looked-up
+ * player's values into them, and chooses between one player's card and a comparison's pair. KillClogPanel lays them out
+ * and ComparisonController writes a comparison's values.
  */
 public class Cells
 {
@@ -209,10 +203,8 @@ public class Cells
 
 
 	/**
-	 * Write hiscore-driven values into every primary-side cell: bosses
-	 * (text + color + dimmed-icon swap), activities
-	 * and clue tiers. Mirrors
-	 * {@link ComparisonController#updateAllCells()} for the comparison side.
+	 * Write the hiscores' values into every cell for the looked-up player: bosses (text, color and the dimmed icon),
+	 * activities and clue tiers. {@link ComparisonController#updateAllCells()} does the same for a comparison.
 	 */
 	public void renderHiscore(HiscoreResult result)
 	{
@@ -254,9 +246,8 @@ public class Cells
 	}
 
 	/**
-	 * Return every cell to its pre-lookup state: dashes in the resting colour,
-	 * the resting tooltip, boss cells back on their original icons, and both
-	 * tooltip caches emptied. The panel resets its own header alongside.
+	 * Every cell back to how it rests before a lookup: dashes in the resting colour, the resting card, each boss's own
+	 * icon, and no card data kept. The panel resets its own header alongside.
 	 */
 	public void reset()
 	{
@@ -293,9 +284,8 @@ public class Cells
 	}
 
 	/**
-	 * Rebuild the per-cell {@code TooltipData} cache for the primary side from
-	 * the current lookup session results. Mirrors what
-	 * {@link ComparisonController#enter()} does for the comparison side.
+	 * Build each cell's card data again for the looked-up player from the lookup's results, as {@link
+	 * ComparisonController#enter()} does for the rival.
 	 */
 	public void rebuildPrimaryTooltips()
 	{
@@ -401,13 +391,9 @@ public class Cells
 	}
 
 	/**
-	 * Build a sprite tooltip for a cell - always ImgTooltip, with contextual notice when no data.
-	 *
-	 * @param owner     the label whose parent cell drives hover tint
-	 * @param data      tooltip data, or null for notice-only display
-	 * @param gridCols  min columns for the sprite grid
-	 * @param name      display name shown as title when data is null
-	 * @param result    with {@code rsn}, picks whose card this is
+	 * A cell's card, with a notice where there is no data. {@code owner} is the label whose cell takes the hover,
+	 * {@code data} the card's data (null for the notice alone), {@code gridCols} the fewest columns its items take and
+	 * {@code name} the title when there is no data; {@code result} with {@code rsn} says whose card it is.
 	 */
 	JToolTip cellCard(JLabel owner, TooltipData data, int gridCols,
 		String name, @Nullable HiscoreResult result, @Nullable String rsn)
@@ -439,8 +425,8 @@ public class Cells
 		return tip;
 	}
 
-	// No-data copy stays quiet: another player simply has no synced collection log, or theirs hasn't loaded.
-	// No provider names, no blame - just a calm statement.
+	// The words where there is no log to show: another player hasn't synced one, or theirs hasn't loaded. Plainly said,
+	// naming no site and blaming no one.
 	String noClogNotice(String rsn, @Nullable HiscoreResult hiscore)
 	{
 		return LookupSession.frozen(hiscore) ? ranks.logNotice(hiscore)

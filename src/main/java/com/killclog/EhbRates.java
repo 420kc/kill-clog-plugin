@@ -4,10 +4,9 @@ import java.util.*;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * Efficient Hours Bossed: hiscore kill counts divided by community kill rates.
- * EHB rates by TempleOSRS (templeosrs.com), bundled as a versioned resource
- * and refreshed each release. A zero rate means the boss awards no EHB for
- * that mode; an unranked kill count awards nothing.
+ * Efficient Hours Bossed: the hiscores' kill counts divided by TempleOSRS's kill rates (templeosrs.com), which ship
+ * with the plugin and are refreshed each release. A rate of zero means the boss gives no EHB in that mode; a boss the
+ * hiscores don't rank gives none.
  */
 @Slf4j
 final class EhbRates
@@ -22,10 +21,9 @@ final class EhbRates
 	}
 
 	/**
-	 * Sum of kc/rate across rated bosses, or -1 without hiscore data.
-	 * GIMs only reach the hiscores through the regular table, so the
-	 * resolved account type outranks the raw hiscore tag; every ironman
-	 * mode uses the ironman column.
+	 * The sum of kill count over rate for every rated boss, or -1 with no hiscore. A Group Ironman is listed on the
+	 * regular board only, so the account type the lookup settled on stands over the board's; every ironman mode uses
+	 * the ironman rates.
 	 */
 	static double compute(HiscoreResult result, AccountType resolvedType)
 	{

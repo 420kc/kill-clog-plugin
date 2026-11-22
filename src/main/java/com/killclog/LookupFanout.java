@@ -8,17 +8,12 @@ import lombok.*;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * Shared transport for player lookups. Every remote fetch the panel makes
- * rides one version-stamped, EDT-bridged, timeout-bounded pipeline; the
- * primary and comparison controllers own separate instances (separate version
- * spaces) and keep their own presentation. What they can no longer do is
- * disagree about transport policy: timeouts, stale-result gating, and thread
- * bridging live here once.
+ * What every lookup of a player shares: each request is stamped with the lookup it belongs to, has a time limit, and
+ * hands its answer to the Swing thread only while that lookup is still the current one. The panel's lookup and the
+ * comparison's each own one, counting their lookups apart, and each decides for itself what to show.
  *
- * <p>Threading: fetches are started on the EDT; service futures resolve on
- * background threads and every callback is bridged back through
- * {@link SwingUtilities#invokeLater} behind a version check. The volatile
- * version and in-flight fields make the guards observable across threads.
+ * Requests start on the Swing thread and the services answer on their own; {@code version} and {@code inFlight} are
+ * volatile so both sides read them.
  */
 @Slf4j
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
@@ -99,7 +94,7 @@ final class LookupFanout
 		inFlight = false;
 	}
 
-	/** Invalidate every outstanding callback, including optional legs after settlement. */
+	/** Nothing asked so far may answer any more, the Combat Achievements and a late TempleOSRS log included. */
 	void invalidate()
 	{
 		version++;
@@ -118,9 +113,8 @@ final class LookupFanout
 	}
 
 	/**
-	 * CA tier fetch through RuneProfile (or the local cache for self).
-	 * Delivered on the EDT behind the version guard; failures and timeouts log
-	 * and deliver nothing, the caller simply keeps no CA surface.
+	 * Combat Achievements, from RuneProfile or your own from the game; a League has none. A failure or a timeout is
+	 * logged and answers nothing, so the cards show none.
 	 */
 	void fetchCa(String player, int stamp, Consumer<CombatAchievementResult> onResult)
 	{
@@ -140,9 +134,8 @@ final class LookupFanout
 	}
 
 	/**
-	 * Hiscore fetch. A null result means the player was not found; the caller
-	 * owns that presentation. Errors unwrap to {@code onError}, also on the
-	 * EDT behind the guard.
+	 * The hiscores. A null answer means no such player, which the caller words; a failure goes to {@code onError}. Each
+	 * reaches the Swing thread only while its lookup is current.
 	 */
 	void fetchHiscore(String player, @Nullable AccountType knownType, int stamp,
 		Consumer<HiscoreResult> onResult, Consumer<Throwable> onError)
@@ -160,12 +153,10 @@ final class LookupFanout
 	}
 
 	/**
-	 * All clog sources in parallel: the public provider pair races on
-	 * recency, then the player's own killclog.com sync joins on coverage
-	 * (fullest leads, ties go to the player's own sync). Self lookups skip both
-	 * remote-self legs because local widget data is authoritative.
-	 * {@code onError} runs on the EDT behind the guard when present; null
-	 * means log-and-drop. The primary path uses it to release a held hiscore.
+	 * The player's log from every source at once, chosen as {@link ClogProviderFanout} rules; a League's comes from
+	 * killclog.com alone. Where this client keeps your own log, RuneProfile and killclog.com aren't asked for it: what
+	 * the game showed you stands. A failure is logged and, when {@code onError} is given, told on the Swing thread
+	 * while the lookup is current; the panel's lookup uses it to show a hiscore it was holding for the log.
 	 */
 	void fetchClog(String player, boolean isSelf, int stamp,
 		Consumer<ClogResult> onResult, @Nullable Runnable onError)

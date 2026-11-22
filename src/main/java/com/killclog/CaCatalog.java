@@ -5,18 +5,14 @@ import javax.inject.Singleton;
 import net.runelite.api.Client;
 
 /**
- * Live Combat Achievement catalog, read from the game's own tier-threshold
- * varbits. The client broadcasts the current points threshold for every tier,
- * and those thresholds encode the whole catalog: each tier's step over the
- * previous threshold is that tier's total points, so its task count is the
- * step divided by its points per task. A Combat Achievement release moves the
- * varbits on day one, so tier math computed from here never trails the game
- * the way the fallback constants in {@link CombatAchievementTier} or a
- * provider snapshot can.
+ * The Combat Achievement tiers as the running game has them, read from its tier-threshold varbits. The client is sent
+ * the points each tier needs, and those say the whole catalog: a tier's step over the one below is that tier's total
+ * points, so its task count is the step divided by its points per task. A Combat Achievement release moves the varbits
+ * that day, so tiers worked out from here never trail the game as the fallback counts in {@link CombatAchievementTier}
+ * or a site's older answer can.
  *
- * <p>Captured on the client thread; published as an immutable map through a
- * volatile field so HTTP-thread consumers (RuneProfile parsing) see a complete
- * snapshot or none.
+ * Read on the client thread and published whole through a volatile field, so a reader on another thread (RuneProfile's
+ * parsing) sees one complete reading or none.
  */
 @Singleton
 final class CaCatalog
@@ -24,9 +20,8 @@ final class CaCatalog
 	private volatile Map<CombatAchievementTier, Integer> totals;
 
 	/**
-	 * Read the six threshold varbits and derive per-tier task totals. Keeps the
-	 * previous capture when the read is invalid (pre-login zeros or a
-	 * mid-update partial state).
+	 * Read the six threshold varbits and work out each tier's task count. An unusable reading (the zeros before login,
+	 * or a half-updated set) keeps the last one.
 	 */
 	boolean capture(Client client)
 	{
@@ -57,9 +52,8 @@ final class CaCatalog
 	}
 
 	/**
-	 * Thresholds to per-tier task counts. Each tier's step over the previous
-	 * threshold must be positive and divide evenly by its points per task;
-	 * anything else is a partial or garbled read and yields null.
+	 * Thresholds to each tier's task count. A tier's step over the one below must be positive and divide evenly by its
+	 * points per task; anything else is a half-read set and gives null.
 	 */
 	/* package */ static Map<CombatAchievementTier, Integer> deriveTotals(
 		Map<CombatAchievementTier, Integer> thresholds)

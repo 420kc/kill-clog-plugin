@@ -1,10 +1,5 @@
 /*
  * Copyright (c) 2026, 420 kc <dyl@420kc.dev>
- * Owns the primary lookup lifecycle for Kill Clog: cache check, reveal
- * pacing, and listener choreography. The transport underneath (parallel
- * hiscore, clog, and CA fetches with version gating, EDT bridging, and
- * timeouts) is {@link LookupFanout}, shared with the comparison side. UI is
- * downstream via {@link Listener}; never widget code here.
  */
 package com.killclog;
 
@@ -14,52 +9,48 @@ import javax.swing.Timer;
 import lombok.Getter;
 
 /**
- * One player's lookup lifecycle. Subscribers receive typed events through
- * {@link Listener}; this class never touches the UI. The owned
- * {@link LookupFanout} version-stamps every fetch so an in-flight call
- * superseded by a newer {@link #start} cannot overwrite it.
+ * One lookup of a player for the panel: it answers from the services' caches while they are fresh and asks the
+ * hiscores, the log and the Combat Achievements otherwise, holds a finished hiscore briefly for its log, and tells its
+ * {@link Listener} each step. It never touches a widget. Each request carries the stamp of the lookup it was made for
+ * ({@link LookupFanout}), so one a newer {@link #start} has overtaken can't draw over it.
  *
- * <p>Threading: {@link #start} runs on the EDT, and every listener callback
- * arrives on the EDT (the reveal {@link Timer} fires there; service futures
- * bridge through the fanout).
+ * {@link #start} runs on the Swing thread, and every listener call arrives there.
  */
 public class LookupSession
 {
-	/**
-	 * Receives lifecycle events from a {@link LookupSession}. All methods
-	 * are invoked on the EDT.
-	 */
+	/** What a lookup tells the panel, always on the Swing thread. */
 	public interface Listener
 	{
-		/** Lookup begun: UI should reset row state, set loading indicator, post a search-status line. */
+		/** A lookup began: the panel clears the last one and says it is searching. */
 		void onLookupStart(String player, boolean isSelf, boolean isFirstSelfGreeting);
 
-		/** Cache hit: hiscore and possibly clog returned from service caches without an API call. */
+		/**
+		 * The hiscore service still held a fresh answer, so the hiscores weren't asked: that answer, and the log if one
+		 * is held.
+		 */
 		void onCachedResult(String player, HiscoreResult hiscore, @Nullable ClogResult clog,
 			@Nullable AccountType knownType);
 
-		/** Live hiscore result arrived from the API. */
+		/** The hiscores answered. */
 		void onHiscoreResult(String player, HiscoreResult hiscore, @Nullable AccountType knownType);
 
 		/**
-		 * Live clog result arrived from the API (independent of hiscore timing).
-		 * {@code clog} is null when the clog service returned no data for the
-		 * player; the listener is responsible for the not-found UI (sync notice
-		 * for self, blank notice otherwise) and for any follow-up RSN fetch.
+		 * The log arrived, whenever the hiscores do. {@code clog} is null when no source has this player's log: the
+		 * listener words that (the setup notice for your own, nothing for anyone else's) and asks for the player's name
+		 * as they write it.
 		 */
 		void onClogResult(String player, @Nullable ClogResult clog, boolean isSelf, int lookupVersion);
 
 		/**
-		 * CA tier result arrived from local cache or RuneProfile (independent of hiscore/clog timing).
-		 * {@code ca} is null when the player has no CA data (not synced, or the provider was
-		 * unavailable); the listener simply omits the CA surface in that case.
+		 * The Combat Achievements arrived, whenever the others do, from your own game or RuneProfile. {@code ca} is
+		 * null when the player has none (never synced, or RuneProfile didn't answer), and the cards then show none.
 		 */
 		void onCaResult(String player, @Nullable CombatAchievementResult ca, boolean isSelf, int lookupVersion);
 
-		/** The hiscore service returned a null result (player not found). */
+		/** The hiscores have no such player. */
 		void onNotFound(String player);
 
-		/** A service call threw. The error parameter is the unwrapped cause where possible. */
+		/** A request failed; {@code error} is its cause where one could be found. */
 		void onError(String player, Throwable error);
 	}
 
@@ -146,12 +137,11 @@ public class LookupSession
 
 	/**
 	 * Begin a lookup for {@code player}, in place of any still in flight: its stamp goes stale, so nothing it fetched
-	 * paints (a right-click lookup on someone new never shows the last name's results under the new one). No-op for
-	 * an empty name. Otherwise: cache check with a reveal-on-delay if fresh, or a full parallel hiscore + public clog
-	 * provider fan-out if stale or missing.
+	 * paints (a right-click lookup on someone new never shows the last name's results under the new one). An empty name
+	 * does nothing. A fresh cached hiscore is shown after a short pause; otherwise the hiscores are asked. The log and
+	 * the Combat Achievements are asked either way.
 	 *
-	 * <p>Caller must invoke on the EDT. All listener callbacks are also on the
-	 * EDT.
+	 * Call it on the Swing thread.
 	 */
 	public void start(String player, @Nullable String localRsn, @Nullable AccountType localAccountType)
 	{
@@ -180,9 +170,8 @@ public class LookupSession
 			listener.onCaResult(player, ca, isSelf, thisLookup);
 		});
 
-		// Self-lookups know their own account type; cascade only matters for
-		// other players. GIMs only ever appear on the regular hiscores, so the
-		// hiscore service must be told to skip the cascade for them.
+		// Your own account type comes from the game, so the hiscores needn't try each board to learn it; they must not
+		// for a Group Ironman, who is on the regular board only.
 		final AccountType knownType = isSelf ? localAccountType : null;
 
 		// The shared cache holds main-game rows only.
@@ -260,8 +249,8 @@ public class LookupSession
 	}
 
 	/**
-	 * Clog fan-out via the shared transport; failures keep the surface empty.
-	 * Every outcome settles the clog, so a held hiscore is never left waiting.
+	 * Asks for the log. A failure leaves it empty. Every outcome settles the log, so a held hiscore is never left
+	 * waiting.
 	 */
 	private void startClogLookup(String player, boolean isSelf, int thisLookup)
 	{
@@ -285,10 +274,9 @@ public class LookupSession
 	}
 
 	/**
-	 * Show a finished hiscore together with its clog, so cells never paint
-	 * white and recolour a moment later. A slow provider delays the reveal by
-	 * at most {@link #CLOG_HOLD_MS}; after that the hiscore shows on its own
-	 * and the clog colours it on arrival, as it always could.
+	 * Show a finished hiscore together with its log, so cells never paint white and recolour a moment later. A slow
+	 * source delays it by at most {@link #CLOG_HOLD_MS}; after that the hiscore shows alone and the log colours it when
+	 * it arrives.
 	 */
 	private void revealWithClog(int thisLookup, boolean clogReady, Runnable reveal)
 	{
@@ -350,9 +338,8 @@ public class LookupSession
 	}
 
 	/**
-	 * Abandon any in-flight lookup so the next {@link #start} is accepted.
-	 * Bumps the version stamp so already-spawned async callbacks see
-	 * themselves as stale and short-circuit.
+	 * Abandon any lookup in flight so the next {@link #start} is accepted: its stamp goes stale, so whatever it still
+	 * has in the air draws nothing.
 	 */
 	public void cancelInFlight()
 	{
@@ -361,15 +348,14 @@ public class LookupSession
 	}
 
 	/**
-	 * Adopt already-loaded results as the current lookup state, bypassing the
-	 * async pipeline. Also clears all state on failure or shutdown.
+	 * Take results already loaded as the lookup's own, with no request made; all nulls clears it, as a failure or a
+	 * shutdown does.
 	 */
 	public void adoptState(@Nullable HiscoreResult hiscore, @Nullable ClogResult clog,
 		@Nullable CombatAchievementResult ca, @Nullable String name)
 	{
-		// Invalidate any still-in-flight callbacks from the player being
-		// replaced: their clog/CA lanes can outlive the hiscore result, and
-		// without this bump a late arrival would overwrite the adopted state.
+		// Nothing still in the air for the player being replaced may answer: its log and Combat Achievements can
+		// outlast its hiscore, and a late one would draw over what was just adopted.
 		clearHold();
 		fanout.invalidate();
 		this.hiscoreResult = hiscore;

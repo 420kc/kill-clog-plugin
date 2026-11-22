@@ -6,14 +6,12 @@ import javax.annotation.Nullable;
 import lombok.*;
 
 /**
- * Immutable Combat Achievement lookup result from per-tier task counts.
+ * A player's Combat Achievements, from the tasks done in each tier. Never changed once built.
  *
- * <p>Tier math runs against the current catalog: live task counts from
- * {@link CaCatalog} when captured, else the fallback constants. Completed
- * counts never revoke, so a provider snapshot taken before a Combat
- * Achievement release still carries true counts; only the denominators move.
- * Computing against the live catalog therefore reproduces the game's own
- * demotion semantics on release day, before the player has re-synced.
+ * Tiers are worked out against the catalog as it is now: the game's own task counts from {@link CaCatalog} once read,
+ * else the fallback counts. Tasks done are never taken back, so an answer a site gave before a Combat Achievement
+ * release still has true counts and only the totals have moved. Worked out against the game's totals, a player who
+ * dropped a tier on release day shows it at once, before they sync again.
  */
 final class CombatAchievementResult
 {
@@ -98,9 +96,8 @@ final class CombatAchievementResult
 	}
 
 	/**
-	 * Build with the live catalog's task counts. When present they own both the
-	 * tier math and the displayed denominators, because provider snapshots and
-	 * the fallback constants can trail a Combat Achievement release.
+	 * Built with the game's own task counts. When given, they decide the tiers and are the totals shown, because a
+	 * site's answer and the fallback counts can trail a Combat Achievement release.
 	 */
 	static CombatAchievementResult of(Map<CombatAchievementTier, Integer> completed,
 									Map<CombatAchievementTier, Integer> total,
@@ -183,10 +180,9 @@ final class CombatAchievementResult
 	}
 
 	/**
-	 * This result recomputed against the given live totals; returns this
-	 * instance when the math already used them. Cached results are built once
-	 * and served for their TTL, so a verdict computed before a catalog capture
-	 * (or across a threshold change) heals on read instead of surviving stale.
+	 * This result worked out again against the game's totals, or itself when it already used them. A cached result is
+	 * built once and served until it ages out, so one built before the catalog was read (or across a release) is put
+	 * right as it is read rather than served stale.
 	 */
 	CombatAchievementResult rebasedOn(Map<CombatAchievementTier, Integer> liveTotals)
 	{

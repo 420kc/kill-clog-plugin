@@ -15,18 +15,14 @@ final class ClogUnlockParser
 	private static final String COLLECTION_LOG_UNLOCK_PREFIX =
 		"New item added to your collection log:";
 
-	// Clan broadcast form: "<player> received a new collection log item:
-	// <item> (1186/1706)". Players whose notification setting is popup-only
-	// never get the personal game message, so the broadcast is the only chat
-	// signal their own unlock produces. The trailing counts are the live
-	// obtained/total pair, fresher than a possibly lagging varp read.
+	// The clan broadcast: "<player> received a new collection log item: <item> (1186/1706)". A player whose
+	// notification setting is the popup alone never gets the game message, so the broadcast is the only chat line their
+	// own unlock makes. Its counts are the log's obtained and total as of the unlock, which the varp can lag behind.
 	private static final Pattern CLAN_BROADCAST_UNLOCK = Pattern.compile(
 		"^(.+?) received a new collection log item: (.+?)(?: \\((\\d+)/(\\d+)\\))?$");
 
-	// The game's kill-count message, in RuneLite's own pattern: covers kill,
-	// harvest, lap, completion, success, and subdued variants with their
-	// color tags. Each boss's latest one supplies the "obtained at N kc"
-	// provenance (LiveClogSync).
+	// The game's kill-count message, in RuneLite's own pattern: kills, harvests, laps, completions, successes and
+	// "subdued", with their colour tags. Each boss's latest one says which kill an item arrived on (LiveClogSync).
 	private static final Pattern KILLCOUNT_MESSAGE = Pattern.compile(
 		"Your (?<pre>completion count for |subdued |completed )?(?:<col=[0-9a-f]{6}>)?(?<boss>.+?)(?:</col>)? "
 			+ "(?<post>(?:(?:kill|harvest|lap|completion|success|Total Ticket) )?(?:count )?)is: ?"

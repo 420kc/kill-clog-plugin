@@ -14,14 +14,14 @@ import java.util.function.Supplier;
  */
 final class ClogProviderFanout
 {
-	// Every provider leg gets this long; tests shorten it.
+	// How long each source gets; tests shorten it.
 	static long providerTimeoutSeconds = 7;
 
 	private ClogProviderFanout()
 	{
 	}
 
-	/** Shared by panel and chat; remote-self legs never replace local observations. */
+	/** Chat's lookup, which waits for every source. A site's copy never replaces your own log as the game showed it. */
 	static CompletableFuture<ClogResult> lookup(boolean isSelf,
 		Supplier<CompletableFuture<ClogResult>> temple,
 		Supplier<CompletableFuture<ClogResult>> runeProfile,
@@ -102,9 +102,9 @@ final class ClogProviderFanout
 	}
 
 	/**
-	 * All three legs: the fuller of TempleOSRS's and RuneProfile's logs ({@link ClogResult#pickFullerProvider}),
-	 * then the player's own killclog.com sync joins on coverage: fullest leads, ties go to the sync
-	 * ({@link ClogResult#pickFullest}).
+	 * All three sources: the fuller of TempleOSRS's and RuneProfile's logs ({@link ClogResult#pickFullerProvider}),
+	 * then the player's own killclog.com sync on coverage: the fullest leads, and a tie goes to the sync ({@link
+	 * ClogResult#pickFullest}).
 	 */
 	static CompletableFuture<ClogResult> chooseFullest(
 		CompletableFuture<ClogResult> temple,

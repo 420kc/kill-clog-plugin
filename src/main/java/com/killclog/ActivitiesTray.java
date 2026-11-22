@@ -1,9 +1,5 @@
 /*
  * Copyright (c) 2026, 420 kc <dyl@420kc.dev>
- * Slide-down activities tray: expandable content panel with eased animation.
- * Self-contained widget; the panel hands it the content + an onToggle hook,
- * the tray owns expanded state, the clip's preferred-size override, the
- * separator click target, and the Timer-driven slide.
  */
 package com.killclog;
 
@@ -15,11 +11,9 @@ import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.util.ColorUtil;
 
 /**
- * Expandable tray with an eased height animation. Construction wires a content
- * panel into a clip whose preferred-size depends on the tray's expanded state;
- * {@link #getSeparator()} is the click target between this tray and whatever
- * lives below it. Clip + separator are exposed as Components so the panel can
- * place them inside its existing GridBag layout.
+ * The tray that slides open and shut under the panel. The panel gives it what to show and is told each toggle; the tray
+ * keeps whether it is open, the clip that hides what hasn't slid out yet, the separator that is its one toggle, and the
+ * timer that slides it. The clip and the separator are plain components, so the panel places them in its own layout.
  */
 public class ActivitiesTray
 {
@@ -81,9 +75,8 @@ public class ActivitiesTray
 		clip.setPreferredSize(new Dimension(0, expanded ? content.getPreferredSize().height : 0));
 		clip.setVisible(expanded);
 
-		// The separator is the tray's only toggle (the hamburger switches boss
-		// views now), so it stays visible in both states: hidden-when-collapsed
-		// would make one collapse unrecoverable for the whole session.
+		// The separator is the tray's only toggle, so it shows open or shut: hidden while shut, one close could never
+		// be undone.
 		this.separator = new JPanel();
 		separator.setBackground(ColorScheme.DARK_GRAY_COLOR);
 		separator.setPreferredSize(new Dimension(0, SEPARATOR_HEIGHT));

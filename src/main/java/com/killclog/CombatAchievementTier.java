@@ -5,15 +5,12 @@ import lombok.*;
 import net.runelite.api.gameval.VarbitID;
 
 /**
- * Combat Achievement tiers and the reward item the Combat Summary shows for each.
+ * The Combat Achievement tiers and the reward item the Combat Summary shows for each.
  *
- * <p>Easy through Master unlock by points. Grandmaster requires every task in
- * every tier to be complete. Thresholds are never stored: each tier's
- * threshold is the total points of all tasks in it and below, so they derive
- * from task counts. The task counts here are a fallback snapshot for cold
- * starts; {@link CaCatalog} supplies the live counts from the running game
- * build, which is what keeps tier math honest across a Combat Achievement
- * release.
+ * Easy through Master unlock by points; Grandmaster needs every task in every tier done. Thresholds are never stored: a
+ * tier's is the points of every task in it and below, so they follow from the task counts. The counts here are a
+ * fallback for before the game's are read; {@link CaCatalog} has the running game's, which keep the tiers right across
+ * a Combat Achievement release.
  */
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 enum CombatAchievementTier
@@ -82,9 +79,8 @@ enum CombatAchievementTier
 	}
 
 	/**
-	 * Highest points-unlocked tier against the given task counts, with each
-	 * threshold derived as the cumulative points of that tier and below.
-	 * Grandmaster is completion-gated and never returned here.
+	 * The highest tier these points unlock against the given task counts, each threshold being the points of that tier
+	 * and those below. Never Grandmaster, which needs every task done.
 	 */
 	static CombatAchievementTier highestForPoints(int totalPoints,
 		Map<CombatAchievementTier, Integer> totals)

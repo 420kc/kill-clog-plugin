@@ -8,12 +8,11 @@ import net.runelite.api.*;
 import net.runelite.client.game.ItemManager;
 
 /**
- * The collection log catalog parsed from the running game build's own enums.
+ * The Collection Log's catalog, read from the running game's own enums.
  *
- * <p>Parsed on the client thread; published whole as an immutable-by-convention
- * snapshot through a volatile field, the same contract as {@link CaCatalog}.
- * Consumers on other threads (chat command executor, EDT) read one complete
- * parse or none; the maps are never mutated after publication.
+ * Read on the client thread and published whole through a volatile field, as {@link CaCatalog} is: a reader on another
+ * thread (the chat commands', the Swing thread) sees one complete reading or none, and its maps never change once
+ * published.
  */
 @Slf4j
 @Singleton
@@ -307,8 +306,8 @@ final class ClogIndex
 	}
 
 	/**
-	 * Identity of the current parse, for callers caching structures derived
-	 * from it; null when unparsed. Reference-compare only.
+	 * Which reading this is, for a caller that keeps something built from it; null before the first. Compare it with
+	 * {@code ==} only.
 	 */
 	@Nullable
 	Object generation()
@@ -317,9 +316,8 @@ final class ClogIndex
 	}
 
 	/**
-	 * One coherent copy of the whole catalog: category items and item names
-	 * captured from the same parse, so a concurrent clear or reparse can
-	 * never pair pieces of two generations. Null when unparsed.
+	 * The whole catalog as one copy: each page's items and the item names from the same reading, so a clear or a new
+	 * reading in between can never pair pieces of two. Null before the first reading.
 	 */
 	@Nullable
 	CatalogCopy copyCatalog()

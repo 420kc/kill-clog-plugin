@@ -4,8 +4,9 @@ import javax.annotation.Nullable;
 import lombok.*;
 
 /**
- * Account identity as shown in the panel. AccountType remains the account mode;
- * HiscoreTable names the rank table when regular pures/skillers refine.
+ * An account as the panel shows it: its mode ({@link AccountType}), the board its ranks came from ({@link
+ * HiscoreTable}, which for a regular account can be the pures' or the skillers'), and the mode it left, when it left
+ * one.
  */
 @EqualsAndHashCode
 final class AccountDisplay
