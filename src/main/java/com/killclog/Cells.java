@@ -453,11 +453,11 @@ public class Cells
 	private JToolTip gridTooltip(JLabel owner, @Nullable TooltipData blue, Supplier<TooltipData> red, String name,
 		@Nullable String wikiPage)
 	{
-		JToolTip tip = cellCard(owner, blue, 5, name, lookupSession.getHiscoreResult(), lookupSession.getCurrentLookupRsn());
+		JToolTip tip = cellCard(owner, blue, CardBody.MIN_COLS, name, lookupSession.getHiscoreResult(), lookupSession.getCurrentLookupRsn());
 		linkTitle(tip, wikiPage);
 		return comparison.held(owner, tip, () ->
 		{
-			JToolTip rival = cellCard(owner, red.get(), 5, name, comparison.getCompareHiscoreResult(),
+			JToolTip rival = cellCard(owner, red.get(), CardBody.MIN_COLS, name, comparison.getCompareHiscoreResult(),
 				comparison.getCompareRsn());
 			linkTitle(rival, wikiPage);
 			return rival;

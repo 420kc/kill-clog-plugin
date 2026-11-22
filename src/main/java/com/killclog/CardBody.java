@@ -597,6 +597,10 @@ final class CardBody
 
 	// Full-size item sprites a gap apart; a scrolled grid's window holds whole rows of them.
 	static final int GRID_SPRITE = 32;
+	// The room between item sprites laid out in a row, and over such a row: a shelf's, the gear's, the superiors'.
+	static final int SPRITE_PAD = 6;
+	// An item grid's columns before a wider card gives it more: pets, a skill's sections, a log page.
+	static final int MIN_COLS = 5;
 	private static final int CAPTION_GAP = 1;
 	static final int GRID_GAP = 4;
 	static final int GRID_CELL = GRID_SPRITE + GRID_GAP;

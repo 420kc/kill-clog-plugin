@@ -21,7 +21,6 @@ public class ClogSummaryTooltip extends TitleTooltip
 	private static final int ICON_SIZE = 13;
 	private static final int ICON_GAP = 3;
 	private static final int SEPARATOR_PAD = 2;
-	private static final int RECENT_PAD = 6;
 	// Recent fills the tiles' width: six items, their dates under them.
 	static final int RECENT_SHOWN = 6;
 	private static final int SOURCES_GAP = 3;
@@ -309,7 +308,7 @@ public class ClogSummaryTooltip extends TitleTooltip
 		if (shelf != null)
 		{
 			body.titled(title).add(CardBody.sprites(section, shelf.sprites, shelf.ids, shelf.names, shelf.counts,
-				RECENT_PAD, perRow, shelf.dates));
+				CardBody.SPRITE_PAD, perRow, shelf.dates));
 		}
 	}
 

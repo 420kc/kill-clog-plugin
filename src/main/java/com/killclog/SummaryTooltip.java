@@ -18,7 +18,6 @@ import net.runelite.client.game.ItemManager;
  */
 public class SummaryTooltip extends TitleTooltip
 {
-	private static final int PET_COLS = 5;
 	private static final int FIGURE_GAP = 4;
 	private static final String PRESTIGE_LABEL = "Prestige: ";
 	private static final String FORMER_TITLE = "Player Summary";
@@ -36,7 +35,6 @@ public class SummaryTooltip extends TitleTooltip
 	// the player's pages there.
 	private List<CardSources.Source> sources = Collections.emptyList();
 	static final String SOURCE_PREFIX = "View on ";
-	private static final int SOURCES_GAP = 8;
 
 	// Pet data only includes obtained pets: the gallery shows what you have,
 	// not the empty slots.
@@ -182,7 +180,7 @@ public class SummaryTooltip extends TitleTooltip
 		if (!sources.isEmpty())
 		{
 			int width = CardSources.width(sources.size());
-			card.add(CardBody.row(0, c -> headerTextWidth() + SOURCES_GAP + width, (c, y) -> CardSources.draw(c, sources,
+			card.add(CardBody.row(0, c -> headerTextWidth() + HEADER_CORNER_GAP + width, (c, y) -> CardSources.draw(c, sources,
 				c.w - c.inset() - width, c.inset() + (getHeaderHeight() - CardSources.ICON) / 2, TooltipItemHover.HEADER_SECTION)));
 		}
 		if (figure != null)
@@ -204,7 +202,7 @@ public class SummaryTooltip extends TitleTooltip
 				completionColor(count, totalPetCount)));
 			if (hasPets())
 			{
-				pets.add(CardBody.grid(PET_COLS, petSprites, petNames, petList, new HashSet<>(petList), petCounts));
+				pets.add(CardBody.grid(CardBody.MIN_COLS, petSprites, petNames, petList, new HashSet<>(petList), petCounts));
 			}
 			card.add(hasBodyAbovePets() ? CardBody.hoverBand() : CardBody.headerHoverBand())
 				.add(CardBody.scroll(scroll, pets.asPart()));

@@ -37,7 +37,8 @@ public abstract class TitleTooltip extends NativeTooltip
 	protected static final Color STALE_RED = new Color(255, 60, 60);
 	protected static final Color CLOG_YELLOW = new Color(255, 255, 0);
 	protected static final Color MUTED_GRAY = new Color(148, 148, 148);
-	private static final int HEADER_WORD_GAP = 8;
+	// Between the header's text and what sits at its right: a card's word, the Player Summary's sources.
+	static final int HEADER_CORNER_GAP = 8;
 	private static final int HEADER_ICON_GAP = 3;
 
 	@Getter(AccessLevel.PROTECTED)
@@ -109,7 +110,7 @@ public abstract class TitleTooltip extends NativeTooltip
 	{
 		FontMetrics fm = getFontMetrics(wordFont);
 		int iconWidth = icon != null ? icon.getWidth(null) + HEADER_ICON_GAP : 0;
-		return CardBody.row(0, c -> word != null ? headerTextWidth() + HEADER_WORD_GAP + iconWidth + fm.stringWidth(word) : 0, (c, y) ->
+		return CardBody.row(0, c -> word != null ? headerTextWidth() + HEADER_CORNER_GAP + iconWidth + fm.stringWidth(word) : 0, (c, y) ->
 		{
 			if (word != null)
 			{

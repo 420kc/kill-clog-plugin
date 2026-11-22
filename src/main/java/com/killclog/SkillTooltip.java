@@ -19,7 +19,6 @@ public class SkillTooltip extends TitleTooltip
 	static final String RANK_LABEL = "Rank: ";
 	static final String XP_TO_LEVEL_LABEL = "XP to Level: ";
 	static final String RIFTS_CLOSED_LABEL = "Rifts Closed: ";
-	private static final int MIN_COLS = 5;
 
 	private Stats stats = Stats.empty();
 	private List<SkillClogSection> sections = Collections.emptyList();
@@ -114,7 +113,7 @@ public class SkillTooltip extends TitleTooltip
 	private static CardBody.Part grid(int index, SkillClogSection section, @Nullable TooltipItemSprites sprites)
 	{
 		List<Integer> ids = section.itemIds();
-		ToIntFunction<CardBody.Ctx> cols = c -> Math.min(Math.max(MIN_COLS, (c.available + CardBody.GRID_GAP) / CardBody.GRID_CELL),
+		ToIntFunction<CardBody.Ctx> cols = c -> Math.min(Math.max(CardBody.MIN_COLS, (c.available + CardBody.GRID_GAP) / CardBody.GRID_CELL),
 			ids.size());
 		return CardBody.part(c -> cols.applyAsInt(c) * CardBody.GRID_CELL - CardBody.GRID_GAP, c ->
 		{
