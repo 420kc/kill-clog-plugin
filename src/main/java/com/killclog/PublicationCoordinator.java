@@ -286,9 +286,8 @@ final class PublicationCoordinator
 	}
 
 	/**
-	 * The panel's sync arrow: push now, skipping any pending debounce. The
-	 * single-flight gate remembers a click during an in-flight request, so
-	 * icon-only feedback never makes that deliberate action disappear.
+	 * The panel's sync control: push now, skipping any debounce in wait. The gate remembers a click made while a
+	 * request is in the air, so a control that only flashes its icon never loses a press.
 	 */
 	void manualSync()
 	{
@@ -1076,14 +1075,11 @@ final class PublicationCoordinator
 	// ── personal-best cargo ────────────────────────────────────────────
 
 	/**
-	 * RuneLite's own chat-commands store records the local player's personal
-	 * bests; no public provider serves them, which makes this map the sync's
-	 * defining cargo. One account splinters into many rs-profile fragments
-	 * over time, so the gather reads every fragment owned by the captured
-	 * account hash ({@link PersonalBests#records}). STANDARD-world fragments
-	 * only: Leagues and speedrun profiles share the display name but store
-	 * buffed-world times, and the min-merge would launder those into the
-	 * player's real record. Client thread (config reads).
+	 * RuneLite's Chat Commands keeps the local player's personal bests, and no site serves them: only a sync carries
+	 * them. One account's bests end up spread over many RuneLite profiles, so this reads every profile the account's
+	 * hash owns ({@link PersonalBests#records}). Main-game profiles only: a League's or a speedrun world's shares the
+	 * name but holds times set with that world's boosts, and taking the fastest would pass those off as the player's
+	 * real record. Client thread (config reads).
 	 */
 	private Map<String, PbRecord> gatherPersonalBests(List<String> profileKeys, Map<String, Double> pbs)
 	{

@@ -14,13 +14,11 @@ import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.util.ImageUtil;
 
 /**
- * The status line above the search bar and the killclog.com one-click
- * controls that share it. Every occupant is a {@link StatusMessage}: lookup
- * text arrives through {@link #setSearchStatus}, sync and character feedback
- * through the show/reset methods. Feedback only lands while the row is free
- * or already its owner's, and an expiry only ever clears the message it was
- * started for. Widgets are touched on the EDT only, and its setters post
- * themselves there, so the plugin calls them from any thread.
+ * The status line above the search bar, and the killclog.com controls that share it. Whatever holds the line is a
+ * {@link StatusMessage}: lookup text comes through {@link #setSearchStatus}, sync and character feedback through the
+ * show and reset methods. Feedback lands only while the line is free or already its owner's, and an expiry clears only
+ * the message it was started for. Widgets are touched on the Swing thread only, and the setters post themselves there,
+ * so the plugin calls them from any thread.
  */
 final class PanelStatusRow
 {
@@ -114,10 +112,9 @@ final class PanelStatusRow
 	}
 
 	/**
-	 * Lookup text from the panel. The panel manages lookup lifetimes itself:
-	 * text holds the row until the panel replaces it, and blank hands the row
-	 * back. The controls only show while the row is free, so search progress
-	 * and player-not-found lines naturally park them.
+	 * Lookup text from the panel, which decides how long it stays: text holds the line until the panel replaces it, and
+	 * blank gives the line back. The controls show only while the line is free, so a search in progress or a player not
+	 * found hides them.
 	 */
 	void setSearchStatus(String text, Color color)
 	{
@@ -361,9 +358,8 @@ final class PanelStatusRow
 				: characterShift ? characterDeleteHandler : characterPublishHandler));
 		requestCharacterIcon();
 
-		// Sits vertically centered in the band between the panel top and the
-		// search bar: the bottom inset biases the icon upward within the
-		// taller status row so its center lands on the band's center.
+		// Centered in the band between the panel's top and the search bar: the status row is taller than that band, so
+		// the bottom inset lifts the icon to the band's middle.
 		syncArrow.setBorder(BorderFactory.createEmptyBorder(0, 4, 6, 5));
 		syncArrow.setVerticalAlignment(JLabel.CENTER);
 		syncArrow.setVisible(false);
@@ -403,8 +399,8 @@ final class PanelStatusRow
 	// ── icons ──────────────────────────────────────────────────────────
 
 	/**
-	 * The sync control wears the Kill Clog chalice itself: dim at rest,
-	 * full red on hover, k1 green briefly after a successful sync.
+	 * The sync control is the Kill Clog chalice itself: dim at rest, full red under the cursor, and k1 green for a
+	 * moment after a sync succeeds.
 	 */
 	private static BufferedImage chaliceBase()
 	{
@@ -557,15 +553,15 @@ final class PanelStatusRow
 		syncFeedback.progress(manual, text, autoClear);
 	}
 
-	/** Silent results still retain failures for the control's next deliberate hover. */
+	/** A result that shows nothing still keeps a failure for the control's next hover to say. */
 	void showSyncResult(boolean manual, boolean ok, String message)
 	{
 		syncFeedback.complete(manual, ok, message);
 	}
 
 	/**
-	 * Drop account-scoped sync feedback without disturbing lookup or character
-	 * status: only a sync-owned message, and with it its expiry, is cleared.
+	 * Drop the account's sync feedback, leaving lookup text and character status alone: only a message the sync owns
+	 * goes, and its expiry with it.
 	 */
 	void resetSyncFeedback()
 	{
@@ -677,11 +673,9 @@ final class PanelStatusRow
 	}
 
 	/**
-	 * Sync and character feedback share the row on equal terms: a message
-	 * only lands while the row is free or already its owner's, so lookup text
-	 * is never stomped. Progress speaks in k1; notices and results stay dim.
-	 * An auto-clearing message expires on its own timer, and that expiry
-	 * clears nothing else. Any thread.
+	 * Sync and character feedback share the line as equals: a message lands only while the line is free or already its
+	 * owner's, so lookup text is never written over. Progress is in k1; notices and results stay dim. A message that
+	 * clears itself does so on its own timer, which clears nothing else. Any thread.
 	 */
 	private void showFeedback(Owner owner, Kind kind, String text, boolean autoClear)
 	{
@@ -710,9 +704,8 @@ final class PanelStatusRow
 	}
 
 	/**
-	 * Successful sync feedback is icon-only so the shared status row never
-	 * moves. It flashes over a blank row or the sync's own text, never over
-	 * lookup or character text.
+	 * A sync that succeeds shows on the icon alone, so the shared line never moves. It flashes over an empty line or
+	 * the sync's own text, never over lookup or character text.
 	 */
 	private void flashSyncSuccess()
 	{

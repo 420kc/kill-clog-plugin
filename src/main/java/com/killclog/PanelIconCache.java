@@ -55,7 +55,7 @@ final class PanelIconCache
 		// Cape and clog tier icons via ItemManager.
 		clientThread.invokeLater(() ->
 		{
-			// Tooltip cape icons - native aspect ratio, taller.
+			// The capes as the cards show them: taller, at the item's own proportions.
 			loadItemImage(itemManager, PanelData.MAX_CAPE_ITEM_ID, img -> maxCapeTip = img);
 			loadItemImage(itemManager, PanelData.INFERNAL_CAPE_ITEM_ID, img -> infernalCapeTip = img);
 			loadItemImage(itemManager, PanelData.INFERNAL_MAX_CAPE_ITEM_ID, img -> infernalMaxCapeTip = img);

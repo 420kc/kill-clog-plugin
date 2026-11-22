@@ -4,11 +4,9 @@ import java.awt.*;
 import javax.swing.*;
 
 /**
- * Comparison tooltip: the two players' complete single tooltips side by side
- * on one parchment card, blue (primary) on the left, red (compared) on the
- * right, each under its player's name. Comparison mode renders through the
- * exact tooltip code players see solo, so every tooltip feature carries into
- * comparison automatically and the two modes can never drift apart.
+ * A comparison's card: both players' own cards side by side on one parchment, blue (the looked-up player) on the left
+ * and red (the rival) on the right, each under its player's name. A comparison draws through the very code a single
+ * card does, so whatever a card gains shows in a comparison too and the two can never drift apart.
  */
 public class SideBySideTooltip extends NativeTooltip
 {
@@ -52,9 +50,8 @@ public class SideBySideTooltip extends NativeTooltip
 				redBadge != null ? redBadge.getIconHeight() : 0)) + NAME_GAP;
 	}
 
-	// Child getPreferredSize is not a pure query (ImgTooltip caches grid
-	// geometry from it), so sizing, layout, and paint must all ask with the
-	// same inputs; do not add state-dependent sizing here.
+	// A child's getPreferredSize does more than answer (ImgTooltip keeps its grid's measurements from it), so sizing,
+	// layout and paint must all ask it the same way; no size here may depend on anything else.
 	@Override
 	public Dimension getPreferredSize()
 	{

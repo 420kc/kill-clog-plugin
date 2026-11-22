@@ -22,19 +22,13 @@ final class TooltipDataBuilder
 		this.clogIndex = clogIndex;
 	}
 
-	/**
-	 * Build TooltipData for a clog category.
-	 * Returns null if no item data exists for the category.
-	 */
+	/** A page's card data, or null when the log has no items for the page. */
 	TooltipData buildTooltipData(String displayName, String category, int rank, ClogResult clogResult)
 	{
 		return buildTooltipData(displayName, category, rank, -1, null, clogResult);
 	}
 
-	/**
-	 * Boss-cell variant: carries the hiscore kc and the local player's
-	 * recorded pb for the KC/PB header line.
-	 */
+	/** A boss cell's, which also carries the hiscores' kill count and the local player's PB for the header line. */
 	TooltipData buildTooltipData(String displayName, String category, int rank, int kc, String pb, ClogResult clogResult)
 	{
 		if (clogResult == null) return null;
@@ -170,10 +164,7 @@ final class TooltipDataBuilder
 		return buildUnsyncedTooltipData(displayName, allItems, rank, kcLabel, kc, true, catalog);
 	}
 
-	/**
-	 * Build TooltipData for a clue rare category (3rd Age / Gilded).
-	 * Returns null if the category has no items.
-	 */
+	/** A clue rare collection's card data (3rd Age or Gilded), or null when it has no items. */
 	TooltipData buildClueRareData(String name, String clogCategory, ClogResult clogResult)
 	{
 		if (clogResult == null) return null;

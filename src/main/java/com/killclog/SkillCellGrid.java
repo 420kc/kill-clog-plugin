@@ -12,8 +12,8 @@ import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.util.ImageUtil;
 
 /**
- * A movable 3x8 grid of real skill cells with compact native stat tooltips.
- * Reusable skill collection-log sections grow below those stats when mapped.
+ * The 3x8 grid of skill cells, which the setting moves between the main grid and the activity tray. A skill's card
+ * shows its stats, then the Collection Log sections that belong to the skill, where it has any.
  */
 final class SkillCellGrid
 {
@@ -167,9 +167,8 @@ final class SkillCellGrid
 
 	private JToolTip buildTooltip(JLabel owner, Skill skill)
 	{
-		// In comparison mode each side is the ordinary solo tooltip, with the
-		// other player's clog unioned into its sections so both cards show the
-		// same slot census.
+		// In a comparison each side is the player's own card, with its sections laid out for both players' logs, so the
+		// two cards list the same slots.
 		JToolTip tooltip = compared != null
 			? comparison.wrapSideBySide(owner,
 				soloTooltip(skill, primary, primaryClog, comparedClog),
@@ -235,9 +234,8 @@ final class SkillCellGrid
 	}
 
 	/**
-	 * The hovered value color for one player's side, from the same skill color
-	 * configs solo cells use. Null (no swap) when that player has no clog,
-	 * matching the boss cells' synced-only hover rule.
+	 * The color one player's value takes while hovered, from the same skill color settings a single cell uses. Null (no
+	 * change) when that player has no log, as boss cells change only for a player with one.
 	 */
 	@Nullable
 	private Color hoverColor(Skill skill, int level, @Nullable ClogResult clog)
@@ -293,9 +291,7 @@ final class SkillCellGrid
 		return Collections.unmodifiableMap(labels);
 	}
 
-	/**
-	 * True when RuneLite's core Virtual Levels plugin is switched on.
-	 */
+	/** Whether RuneLite's own Virtual Levels plugin is on. */
 	private static boolean virtualLevelsPluginEnabled(ConfigManager configManager)
 	{
 		return Boolean.parseBoolean(
@@ -303,9 +299,8 @@ final class SkillCellGrid
 	}
 
 	/**
-	 * The level a skill summary cell shows: the hiscore level normally, the
-	 * xp-derived virtual level (cap 126) when Kill Clog's setting is on.
-	 * Unranked skills (no xp) keep the hiscore value either way.
+	 * The level a skill cell shows: the hiscores' normally, or the virtual level its XP gives (up to 126) when Kill
+	 * Clog's setting is on. A skill the hiscores don't rank (no XP) keeps the hiscores' value either way.
 	 */
 	static int displayLevel(int hiscoreLevel, long xp, boolean virtualLevels)
 	{
@@ -317,9 +312,8 @@ final class SkillCellGrid
 	}
 
 	/**
-	 * True when the Virtual Levels plugin is on and its "virtual total level"
-	 * sub-setting is too (their default: on). Mirrors the total that plugin
-	 * puts on the skill tab.
+	 * Whether the Virtual Levels plugin is on and its "virtual total level" setting with it (on unless they turned it
+	 * off). The total then matches the one that plugin puts on the skill tab.
 	 */
 	static boolean virtualTotalLevelEnabled(ConfigManager configManager)
 	{
@@ -332,12 +326,10 @@ final class SkillCellGrid
 	}
 
 	/**
-	 * Total level for display: the hiscore total normally, the sum of
-	 * xp-derived virtual levels when Virtual Levels' virtual total setting is on.
-	 * Skills the hiscores hide (unranked) contribute their hiscore value via
-	 * the max guard, so a partially-ranked account never shows a virtual
-	 * total below its real one. Never used for maxed detection - identity
-	 * logic stays on real levels.
+	 * The total level shown: the hiscores' normally, or the sum of the virtual levels XP gives when Virtual Levels'
+	 * virtual total setting is on. A skill the hiscores hide (unranked) counts at the hiscores' value, the greater of
+	 * the two, so an account ranked in only some skills never shows a virtual total below its real one. Never used to
+	 * tell a maxed account: that goes by real levels.
 	 */
 	static int displayTotalLevel(HiscoreResult result, boolean virtualTotal)
 	{

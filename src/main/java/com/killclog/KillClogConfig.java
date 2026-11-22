@@ -471,9 +471,8 @@ public interface KillClogConfig extends Config
 
 	// Persisted UI state, not user settings.
 
-	// Open by default since the hamburger became the boss-view switch. The
-	// separator is the tray's toggle in both directions and stays visible
-	// while collapsed, so the tray is always recoverable.
+	// Open by default. The separator opens and shuts the tray and shows either way, so a shut tray can always be opened
+	// again.
 	@ConfigItem(keyName = "activitiesExpanded", name = "", description = "", hidden = true)
 	default boolean activitiesExpanded()
 	{

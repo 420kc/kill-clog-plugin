@@ -15,13 +15,12 @@ import net.runelite.client.hiscore.HiscoreSkill;
 import net.runelite.client.util.*;
 
 /**
- * Handler for the !kclog and !missing chat commands. Both replace the user's chat line with
- * collection log progress for any catalog page, plus inline sprite icons.
- * !kclog renders obtained items, !missing renders the inverse (still-unobtained items).
- * Shares the panel's provider selection and the services' caches.
+ * The !kclog and !missing chat commands: each replaces the player's chat line with a Collection Log page's progress and
+ * its items as icons, !kclog the items obtained and !missing the ones still to get. The log is chosen as the panel
+ * chooses it, from the same caches.
  *
- * Registered async via ChatCommandManager so the lookup I/O runs off-thread. The item icons
- * and the message rewrite both jump to the client thread.
+ * Registered with ChatCommandManager as async, so the requests run off the client thread; the icons and the rewritten
+ * line go back to it.
  */
 @Slf4j
 @Singleton
@@ -108,8 +107,7 @@ class KillClogChatCommand
 	private static Map<String, String> buildAliases()
 	{
 		Map<String, String> m = new HashMap<>();
-		// Canonical names first: every boss the hiscore feed carries, which is
-		// the same census the panel renders.
+		// The hiscores' own names first: every boss they list, the same ones the panel shows.
 		for (String canonical : HiscoreService.bossNames())
 		{
 			m.put(normalize(canonical), canonical);
@@ -243,13 +241,8 @@ class KillClogChatCommand
 	}
 
 	/**
-	 * Resolve the player whose clog the command targets. In PRIVATECHATOUT,
-	 * chatMessage.getName() returns the recipient's name rather than the
-	 * sender's, so !kclog/!missing in an outgoing PM would have looked up the
-	 * wrong player. Self-lookup commands route to the local player when the
-	 * chat type is outgoing PM; every other type continues to use the sender
-	 * field, which is the local player for the channels where these commands
-	 * fire (PUBLICCHAT, FRIENDSCHAT, CLAN_CHAT, CLAN_GUEST_CHAT, AUTOTYPER).
+	 * The player a command speaks for: whoever sent the line. In an outgoing private message chatMessage.getName() is
+	 * the recipient, not the sender, so there it is the local player.
 	 */
 	private String resolveTargetRsn(ChatMessage chatMessage)
 	{
@@ -274,17 +267,15 @@ class KillClogChatCommand
 		dispatch(chatMessage, message, false);
 	}
 
-	/**
-	 * !missing handler: renders unobtained items.
-	 */
+	/** !missing: the items still to get. */
 	void handleMissing(ChatMessage chatMessage, String message)
 	{
 		dispatch(chatMessage, message, true);
 	}
 
 	/**
-	 * RuneProfile-compatible fallback: delegates !log to the Kill Clog result
-	 * path without registering the shared command string.
+	 * !log, RuneProfile's command, answered as !kclog is. The command itself is never registered, since it is
+	 * RuneProfile's.
 	 */
 	void handleLogCompatibility(ChatMessage chatMessage, String message)
 	{
@@ -299,18 +290,15 @@ class KillClogChatCommand
 	}
 
 	/**
-	 * !kc <item name>: reveals the kill count an obtained clog item arrived on,
-	 * e.g. "Elder venator fang received on 421 kc".
+	 * !kc with an item's name: the kill count an obtained item arrived on, as "Elder venator fang received on 421 kc".
 	 *
-	 * Never registered with ChatCommandManager: the built-in ChatCommandsPlugin
-	 * owns the "!kc" trigger (the manager keeps one handler per command string),
-	 * and boss names are its argument space. Item names are ours, so
-	 * KillClogPlugin routes raw chat events here; boss arguments, unknown
-	 * items, and items without captured provenance all fall through untouched
-	 * and Chat Commands' boss lookup keeps working.
+	 * Never registered with ChatCommandManager: RuneLite's Chat Commands owns "!kc" (the manager keeps one handler per
+	 * command), and its arguments are boss names. Item names are ours, so KillClogPlugin sends the raw chat line here;
+	 * a boss's name, an unknown item and an item with no kill kept are all left alone, and Chat Commands' boss lookup
+	 * keeps working.
 	 *
-	 * Runs on the client thread (event subscriber path, not the command
-	 * manager's executor), so item compositions are safe to read directly.
+	 * Runs on the client thread (it comes from a chat event, not the command manager's executor), so item definitions
+	 * can be read here.
 	 */
 	void handleKcItem(ChatMessage chatMessage, ClogIndex clogIndex, LocalClogCache localClogCache)
 	{
@@ -349,17 +337,13 @@ class KillClogChatCommand
 		return itemName + " received on " + TitleTooltip.grouped(kc) + " kc";
 	}
 
-	/**
-	 * !3a handler: renders received 3rd age bucket items.
-	 */
+	/** !3a: the 3rd age items received. */
 	void handleThirdAge(ChatMessage chatMessage, String message)
 	{
 		dispatch(chatMessage, COMMAND + " third age", false);
 	}
 
-	/**
-	 * !gilded handler: renders received gilded bucket items.
-	 */
+	/** !gilded: the gilded items received. */
 	void handleGilded(ChatMessage chatMessage, String message)
 	{
 		dispatch(chatMessage, COMMAND + " gilded", false);
@@ -506,7 +490,7 @@ class KillClogChatCommand
 		}
 	}
 
-	/** One snapshot, canonical page membership, distinct slots, and exact quantities. */
+	/** A page's items from one log: the slots the page has, each once, and how many of each the player holds. */
 	static PageItems pageItems(ClogResult cl, String category, @Nullable Map<String, List<Integer>> catalog)
 	{
 		List<Integer> total = totalsWithCatalogFallback(
@@ -605,11 +589,9 @@ class KillClogChatCommand
 	}
 
 	/**
-	 * Total-slot list for a category: the cached or provider list when it has
-	 * entries, else the parsed in-game catalog's. A log walked before a
-	 * category existed simply lacks it, and providers lag new pages the same
-	 * way, but the running game build always knows the page. Obtained counts
-	 * are untouched: they stay whatever was captured.
+	 * A page's full list of slots: the cached or the site's list when it has any, else the running game's catalog. A
+	 * log walked before a page existed lacks it, and sites trail new pages the same way, but the running game always
+	 * knows the page. What was obtained is untouched: it stays as captured.
 	 */
 	/* package */ static List<Integer> totalsWithCatalogFallback(List<Integer> cached,
 		@Nullable Map<String, List<Integer>> catalog, String categoryKey)

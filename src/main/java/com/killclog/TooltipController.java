@@ -15,10 +15,7 @@ import lombok.*;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.util.ColorUtil;
 
-/**
- * Manages tooltip display mechanics: pinned popups, cell hover effects,
- * and component-scoped ToolTipManager registration.
- */
+/** How cards show: the pinned ones, the cells' hover, and which components Swing's ToolTipManager knows of. */
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 class TooltipController
 {
@@ -74,9 +71,8 @@ class TooltipController
 	private Timer copyTimer;
 
 	/**
-	 * Wire hover effect onto a cell panel.
-	 * Shows outline or tint on hover, handles click-to-reveal.
-	 * 150ms debounced exit keeps the effect while tooltip is open.
+	 * A cell answers the mouse: an outline or a tint while hovered, and a click opens its card. Leaving waits 150ms,
+	 * which keeps the effect while the card is open.
 	 */
 	void addCellHoverEffect(JPanel cell, JLabel label)
 	{
@@ -84,11 +80,9 @@ class TooltipController
 	}
 
 	/**
-	 * Row-shaped variant: the hover outline follows {@code colorSource}'s
-	 * foreground while the cell and every listed surface accept hover and
-	 * click. The pinned tooltip comes from the pressed surface when it carries
-	 * one, else from the first surface (which also keeps the popup anchor
-	 * stable for presses on the bare cell).
+	 * For a row: the outline takes {@code colorSource}'s color, and the cell and every label listed answer hover and
+	 * click. A press opens the card of the label pressed when it has one, else the first label's, which also keeps the
+	 * card in one place for a press on the bare cell.
 	 */
 	void addCellHoverEffect(JPanel cell, JLabel colorSource, JLabel... surfaces)
 	{
@@ -150,9 +144,8 @@ class TooltipController
 	}
 
 	/**
-	 * Update a tracked tooltip and immediately reapply this controller's
-	 * registration rule. Swing otherwise re-registers null-to-value changes
-	 * even while another tooltip is pinned.
+	 * Set a component's tooltip text and apply this controller's rule to it again at once: Swing would otherwise
+	 * register a text set where there was none, even while another card is pinned.
 	 */
 	void setTooltipText(JComponent component, String tooltipText)
 	{

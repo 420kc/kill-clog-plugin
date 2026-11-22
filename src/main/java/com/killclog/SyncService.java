@@ -227,10 +227,9 @@ class SyncService
 				+ (pbCount > 0 ? ", " + pbCount + (pbCount == 1 ? " pb" : " pbs") : "")
 				+ (dryRun ? ", not saved" : "") + ").");
 		}
-		// 409 sync_in_flight is contention, not failure: another client of
-		// this account holds the per-player lock for a moment. Advise a
-		// short retry instead of booking a failure. The retry says so itself
-		// ("retrying..."), so these words only show once it is spent.
+		// 409 sync_in_flight is two clients at once, not a failure: another client of this account holds the player's
+		// lock for a moment. It asks for a short retry rather than counting a failure. The retry says so itself
+		// ("retrying..."), so these words show only once it is spent.
 		if (r.code == 409 && r.body != null && r.body.contains("sync_in_flight"))
 		{
 			return new SyncResult(false, false,
@@ -322,10 +321,9 @@ class SyncService
 	}
 
 	/**
-	 * Request body per the ingest contract:
+	 * The request's body, as the server's ingest reads it:
 	 * {@code { account_hash, account_type?, clog: [{item_id, quantity, categories[], obtained_at?}], client_version }}.
-	 * Items in multiple categories merge to one entry; sorted by item id so
-	 * identical stores produce identical payloads.
+	 * An item on several pages is one entry; entries go by item id, so the same store always sends the same body.
 	 */
 	private JsonObject buildBody(long accountHash, @Nullable AccountType accountType,
 		ClogResult clog, Map<String, Double> personalBests,

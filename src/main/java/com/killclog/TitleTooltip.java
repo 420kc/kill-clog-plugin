@@ -14,9 +14,8 @@ import net.runelite.client.ui.FontManager;
 import net.runelite.client.util.*;
 
 /**
- * Intermediate tooltip with a titled header zone: bold title line,
- * optional subtitle (label: value), optional rank line, then separator.
- * Subclasses list their content below the separator as parts ({@link #body()}).
+ * A card with a header: its title in bold, then a label and value line and a rank line where it has them, then the
+ * separator. A subclass lists what goes under the separator as parts ({@link #body()}).
  */
 public abstract class TitleTooltip extends NativeTooltip
 {
@@ -183,9 +182,7 @@ public abstract class TitleTooltip extends NativeTooltip
 		itemHover.setLinks(links);
 	}
 
-	/**
-	 * Set a subtitle line: label in orange, value in the given color.
-	 */
+	/** The line under the title: its label in orange, its value in the given color. */
 	public void setSubtitle(String label, String value, Color valueColor)
 	{
 		subtitle = new InfoLine(label, value, valueColor);
@@ -420,10 +417,7 @@ public abstract class TitleTooltip extends NativeTooltip
 		return out + ELLIPSIS;
 	}
 
-	/**
-	 * Number of pixel rows the header occupies (title + optional lines).
-	 * Does not include the separator gap below.
-	 */
+	/** How many pixel rows the header takes (the title and the lines it has), without the gap under the separator. */
 	int getHeaderHeight()
 	{
 		return NAME_LINE_HEIGHT + (headerLines().size() + (onBack != null ? 1 : 0)) * LINE_HEIGHT;
@@ -489,10 +483,7 @@ public abstract class TitleTooltip extends NativeTooltip
 		itemHover.setHitBoxes(body().paint(this, g2, w, paintHeader(g2, w)));
 	}
 
-	/**
-	 * Paint the header (title, optional subtitle, optional rank, separator).
-	 * Returns the Y coordinate where body content should start.
-	 */
+	/** Paints the header (the title, its lines and the separator) and returns the y where the body starts. */
 	int paintHeader(Graphics2D g2, int w)
 	{
 		if (title == null)

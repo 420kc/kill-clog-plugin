@@ -4,10 +4,7 @@ import java.util.*;
 import javax.annotation.Nullable;
 import net.runelite.client.hiscore.HiscoreSkill;
 
-/**
- * Static reference data for the panel grid.
- * Pure constants, no state.
- */
+/** What the panel's grids hold, and in what order. Constants only. */
 final class PanelData
 {
 	private PanelData()
@@ -16,11 +13,10 @@ final class PanelData
 
 	static final int MAX_TOTAL_LEVEL = 2376;
 
-	// Boss display order matching RuneLite's Hiscore panel: enum declaration
-	// order. Same bosses as HiscoreService.bossNames() - name-keyed lookups
-	// bridge the two lists when order diverges.
-	// New boss? Add it here in enum order once RuneLite adds it.
-	// See BOSS_NAMES comment in HiscoreService for the full update playbook.
+	// The bosses in the order RuneLite's Hiscore panel shows them, its enum's own. The same bosses as
+	// HiscoreService.bossNames(); where the two orders differ, lookups go by name. A new boss is a row in
+	// panel-catalog.tsv, in the enum's order, once RuneLite has it: the comment on BOSS_NAMES in HiscoreService has
+	// every step.
 	static final HiscoreSkill[] BOSSES = bosses();
 
 	static int bossCount()
@@ -205,9 +201,8 @@ final class PanelData
 
 	private static HiscoreSkill[] bosses()
 	{
-		// A name the running client's enum does not carry yet is skipped, not
-		// fatal: one missing boss beats a dead panel. The parity test still
-		// compiles every expected constant, so drift fails the build.
+		// A name the running client's enum doesn't have yet is skipped rather than failing: one missing boss beats a
+		// dead panel. The parity test still compiles every expected constant, so a mismatch fails the build.
 		List<HiscoreSkill> bosses = new ArrayList<>();
 		for (String name : catalogValues("boss"))
 		{

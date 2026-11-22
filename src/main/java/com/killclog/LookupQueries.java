@@ -197,9 +197,8 @@ final class LookupQueries
 	}
 
 	/**
-	 * 200m in every skill the game has - 4.8b as of Sailing. The summit Lynx
-	 * Titan invented and Fast 07 first reached; the bar rises by itself when
-	 * Jagex adds a skill because the check walks the current skill list.
+	 * 200m in every skill the game has, 4.8b as of Sailing: the summit Lynx Titan invented and Fast 07 first reached.
+	 * The bar rises by itself when Jagex adds a skill, because the check walks the current skill list.
 	 */
 	private static boolean isTitan(HiscoreResult result)
 	{

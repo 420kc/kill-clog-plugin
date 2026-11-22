@@ -70,7 +70,7 @@ final class TooltipItemNameResolver
 				}
 				catch (Exception e)
 				{
-					// Item not in cache - skip.
+					// An item the cache doesn't have is skipped.
 				}
 			}
 			if (end < missing.size())

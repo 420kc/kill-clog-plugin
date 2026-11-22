@@ -3,7 +3,7 @@ package com.killclog;
 import java.util.*;
 import net.runelite.api.Skill;
 
-/** Shared 3x8 in-game skill-tab order for every skill grid surface. */
+/** The skills in the game's own skill-tab order, three across and eight down, for every skill grid. */
 final class SkillGridOrder
 {
 	static final int ROWS = 8;

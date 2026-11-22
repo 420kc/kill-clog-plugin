@@ -70,9 +70,8 @@ public class RuneProfileService
 	}
 
 	/**
-	 * Cached results heal against the current catalog on read: a verdict
-	 * computed before a capture (or across a threshold change) must not serve
-	 * its old tier for the cache TTL.
+	 * A cached result is put right against the catalog as it is read: one worked out before the catalog was read (or
+	 * across a release) must not serve its old tier until it ages out.
 	 */
 	@Nullable
 	private CombatAchievementResult rebased(@Nullable CombatAchievementResult result)
@@ -124,8 +123,7 @@ public class RuneProfileService
 	/**
 	 * The profile RuneProfile last answered with for this name, whatever its age: a card shows what its own lookup
 	 * brought, and the next lookup asks again once it's stale, so a card held open never loses its clan. Matched as
-	 * Jagex names, because the panel asks with a provider's canonical spelling while the cache is keyed by what was
-	 * typed.
+	 * Jagex names, because the panel asks with the spelling a site gave while the cache is keyed by what was typed.
 	 */
 	@Nullable
 	private RuneProfileSummary held(String playerName)
@@ -142,16 +140,14 @@ public class RuneProfileService
 	}
 
 	/**
-	 * Look up CA tier data for a player. Resolves to null when the player has no CA data
-	 * (not synced, or RuneProfile is unavailable with no cached result) so the caller can
-	 * simply omit the CA surface.
+	 * A player's Combat Achievements. Null when they have none (never synced, or RuneProfile didn't answer and nothing
+	 * is cached), and the cards then show none.
 	 */
 	public CompletableFuture<CombatAchievementResult> lookup(String playerName)
 	{
-		// Active player: CA is read straight from the game and held locally.
-		// It is authoritative even when empty, so RuneProfile never supplies it.
-		// The summary is still requested so Sources can say whether this player
-		// has a RuneProfile; nothing from it replaces local data.
+		// The player logged in: their Combat Achievements are read from the game and kept here, and stand even when
+		// empty, so RuneProfile's never replace them. The summary is still asked for, so Sources can say whether they
+		// have a RuneProfile; nothing from it replaces what the game said.
 		if (localCaCache != null && localCaCache.isActivePlayer(playerName))
 		{
 			lookupSummary(playerName).exceptionally(ex -> null);
@@ -447,10 +443,7 @@ public class RuneProfileService
 		}
 	}
 
-	/**
-	 * Normalize a RuneProfile collection-log page name through the same category
-	 * canon used by TempleOSRS and the boss grid.
-	 */
+	/** A RuneProfile page name as the plugin names pages, the names TempleOSRS's pages and the boss grid go by. */
 	static String normalizePageKey(String pageName)
 	{
 		return ClogService.bossToCategory(pageName);

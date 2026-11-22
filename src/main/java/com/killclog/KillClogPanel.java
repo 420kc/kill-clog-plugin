@@ -539,9 +539,7 @@ public class KillClogPanel extends PluginPanel
 		return host;
 	}
 
-	/**
-	 * Move one live skill-cell grid between its configured panel locations.
-	 */
+	/** Put the one skill grid where the setting says: the main grid or the activity tray. */
 	private void refreshSkillDisplay()
 	{
 		if (totalLvlCell == null || traySkillsHost == null || fixedSkillsHost == null)
@@ -879,9 +877,7 @@ public class KillClogPanel extends PluginPanel
 		if (comparison.isComparisonMode()) updateClogTotalsBar();
 	}
 
-	/**
-	 * Render clog data to the panel (extracted for SWR reuse).
-	 */
+	/** Draw a log on the panel. */
 	private void renderClogResult(ClogResult result)
 	{
 		portraitCheck = checkPortrait(portraitCheck, String.valueOf(lookupSession.getLookupVersion()), result);
@@ -1057,9 +1053,8 @@ public class KillClogPanel extends PluginPanel
 	}
 
 	/**
-	 * The blue side of a comparison always has a name: the resolved rsn when
-	 * the lookup landed, else whatever the user searched. An unsynced player
-	 * must never render as "--" in identity rows; only their data goes absent.
+	 * The blue side of a comparison always has a name: the one the lookup settled on, else what was typed. A player
+	 * with nothing synced never shows as "--" where a name goes; only their data is missing.
 	 */
 	private String comparisonBlueName()
 	{
@@ -1209,7 +1204,7 @@ public class KillClogPanel extends PluginPanel
 		tooltipController.deactivate();
 	}
 
-	/** Safety net - clears transient tooltip state if the plugin is disabled. */
+	/** The plugin was disabled: the lookup, the comparison and any open card go. */
 	public void shutdown()
 	{
 		lookupSession.reset();
@@ -1462,11 +1457,8 @@ public class KillClogPanel extends PluginPanel
 		searchRowController.refreshIcon();
 	}
 
-	// ComparisonController.CellRenderTarget
-	// Read-only accessors the controller uses for panel-side summary-bar
-	// widgets (combat + totalLvl cells, playerName + clogInfoLabel).
-	// Cell maps + per-cell labels live on Cells; ComparisonController reads
-	// those directly.
+	// ComparisonController.CellRenderTarget: the header's widgets and the level cells a comparison writes. The other
+	// cells are on Cells, which it reads itself.
 
 	@Override
 	public JLabel combatCell()

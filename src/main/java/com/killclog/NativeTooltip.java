@@ -7,10 +7,9 @@ import javax.swing.JToolTip;
 import net.runelite.client.util.ColorUtil;
 
 /**
- * Base tooltip styled to match native OSRS interface elements.
- * Provides parchment background fill, 9-slice iron border from game sprites,
- * and AA-hinted Graphics2D setup. Subclasses implement content via
- * {@link #paintContent(Graphics2D, int, int)}.
+ * The base of every card, drawn as the game draws its own interfaces: a parchment fill, the iron border from the game's
+ * sprites in nine slices, and the text hints set. A subclass draws its content in {@link #paintContent(Graphics2D, int,
+ * int)}.
  */
 public abstract class NativeTooltip extends JToolTip
 {
@@ -159,10 +158,7 @@ public abstract class NativeTooltip extends JToolTip
 		g2.dispose();
 	}
 
-	/**
-	 * Subclasses paint their content here.
-	 * Background, border, and AA hints are already applied.
-	 */
+	/** A subclass draws its content here, over the background and border, with the text hints set. */
 	protected abstract void paintContent(Graphics2D g2, int w, int h);
 
 	private static void paintBackground(Graphics2D g2, int w, int h)

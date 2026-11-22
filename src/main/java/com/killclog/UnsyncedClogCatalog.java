@@ -6,10 +6,9 @@ import javax.annotation.Nullable;
 import lombok.*;
 
 /**
- * Shared empty collection-log catalog for players without synced clog data.
- * Prefers the parsed in-game clog index so unsynced popups use the same item
- * ids and item names as local/synced tooltip data, with provider categories as
- * a startup fallback.
+ * The empty log shown for a player with none synced, shared by every such card. It is built from the game's own catalog
+ * once read, so those cards use the same item ids and names as a synced log's; the site's page list stands in before
+ * then.
  */
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 final class UnsyncedClogCatalog
@@ -59,10 +58,9 @@ final class UnsyncedClogCatalog
 			return null;
 		}
 
-		// The generation token names one parse. When it moves, copyCatalog()
-		// captures categories and item names atomically from a single parse
-		// (possibly newer than the token just read; the cache keys on the
-		// generation the copy actually came from, so it stays coherent).
+		// generation() names one reading. When it moves, copyCatalog() takes pages and item names from a single
+		// reading, which may be newer than the one just named; the copy is kept under the reading it really came from,
+		// so the two always match.
 		if (indexCatalog == null || builtFrom != index.generation())
 		{
 			ClogIndex.CatalogCopy copy = index.copyCatalog();

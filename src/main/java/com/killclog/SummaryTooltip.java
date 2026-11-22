@@ -9,12 +9,11 @@ import javax.annotation.Nullable;
 import net.runelite.client.game.ItemManager;
 
 /**
- * Player summary tooltip on the summary-bar name label.
- * The player's name is the title, in white beside their account badge. Under it stand the
- * prestige cape or a Kill Clog syncer's character, centered, then the account and prestige
- * lines, then the obtained pets at full size. Like the other summaries, only the title and the hover band
- * under it stay put: the rest scrolls as one once it outgrows the window. Hovering a pet names it in that band
- * and left-click opens its wiki page - same contract as the boss grids.
+ * The Player Summary, on the name in the header. The player's name is the title, in white beside their account badge.
+ * Under it stand the prestige cape or a Kill Clog syncer's character, centered, then the account and prestige lines,
+ * then the obtained pets at full size. Like the other summaries, only the title and the hover band under it stay put:
+ * the rest scrolls as one once it outgrows the window. Hovering a pet names it in that band and a left click opens its
+ * wiki page, as an item on a boss's card does.
  */
 public class SummaryTooltip extends TitleTooltip
 {

@@ -6,9 +6,8 @@ import net.runelite.client.hiscore.HiscoreSkill;
 import net.runelite.client.ui.ColorScheme;
 
 /**
- * Color-setting logic for the completionist highlighter.
- * Constructor takes stable references (maps populated before construction);
- * methods take per-lookup state and late-assigned labels.
+ * Colors the cells for the completionist highlighter. Built with the label maps, which are filled before it; each call
+ * brings the lookup's results.
  */
 final class ProgressHighlighter
 {

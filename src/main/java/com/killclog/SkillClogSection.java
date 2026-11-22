@@ -6,9 +6,8 @@ import lombok.*;
 import net.runelite.api.Skill;
 
 /**
- * A presentation-only view of collection-log slots associated with a skill.
- * The view never writes synthetic categories into {@link ClogResult}, so these
- * repeated slots cannot affect the plugin's canonical collection-log totals.
+ * The Collection Log slots that belong to a skill, for its card to show. Nothing here is written into {@link
+ * ClogResult} as a page, so a slot shown again under a skill never counts twice in the log's totals.
  */
 final class SkillClogSection
 {
@@ -197,10 +196,9 @@ final class SkillClogSection
 
 	private static Map<Skill, List<Spec>> buildSpecs()
 	{
-		// The curated taxonomy ships as a bundled catalog; the parity test pins
-		// its exact contents. Rows are presentation order per skill: pets stay
-		// first, activity sections follow alphabetically, and full activities
-		// read their live category catalogs instead of copying slots.
+		// Which slots go under which skill ships as a catalog, and the parity test holds its exact contents. Rows are
+		// in the order a skill shows them: pets first, then its activities by name; an activity that is a whole page
+		// reads that page's own items rather than listing them again.
 		Map<Skill, List<Spec>> specs = new LinkedHashMap<>();
 		for (String[] row : CatalogTsv.rows(SkillClogSection.class, "skill-clog-sections.tsv", 4))
 		{

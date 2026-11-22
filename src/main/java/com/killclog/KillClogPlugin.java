@@ -218,10 +218,9 @@ public class KillClogPlugin extends Plugin
 
 		lookupMenu.start(config, menuManager);
 
-		// One coordinator for the life of this plugin instance: RuneLite reuses
-		// the instance across disable and enable, and the sync gate, its queued
-		// intent and a request still in the air must survive that, or a re-enabled
-		// plugin would run a second sync beside the old one.
+		// One coordinator for as long as this plugin instance lives: RuneLite keeps the instance across disable and
+		// enable, and the sync's slot, the push waiting for it and a request still in the air must outlive that, or a
+		// plugin switched back on would run a second sync beside the old one.
 		if (publication == null)
 		{
 			publication = new PublicationCoordinator(config, configManager, clientThread, executor,
@@ -346,11 +345,9 @@ public class KillClogPlugin extends Plugin
 	}
 
 	/**
-	 * True-live total bump with no chat dependency: the client pushes the
-	 * collection log counts as varps, so any unlock (and the login flood)
-	 * moves them regardless of the player's notification settings. Upward
-	 * only; full log refresh stays the downward authority. Runs on the client
-	 * thread (varbit events and enterLoggedInState both arrive there).
+	 * The log's totals, kept current without chat: the client is sent the Collection Log's counts as varps, so any
+	 * unlock (and the burst at login) moves them whatever the player's notification setting. They only rise here; a
+	 * whole-log walk is what lowers them. Client thread (varbit events and enterLoggedInState both arrive there).
 	 */
 	private void reconcileClogTotalsFromVarps()
 	{
@@ -402,9 +399,9 @@ public class KillClogPlugin extends Plugin
 
 	/**
 	 * The store serves this login's own log: the chalice and the character button say whether it holds one, and a log
-	 * that does is pushed once. That catch-up closes a hole: a debounced push that fired after logout (or mid world-hop)
-	 * aborted with nothing to relaunch it, so a session's last capture stayed unpublished; the server merge no-ops when
-	 * nothing changed.
+	 * that does is pushed once. Without that push, a debounced one that fired after logout (or during a world hop) gave
+	 * up with nothing to start it again, and the session's last capture stayed unpublished; the server changes nothing
+	 * when the log is the same.
 	 */
 	private void ownLogServing(LocalClogCache cache, String name)
 	{
@@ -507,9 +504,8 @@ public class KillClogPlugin extends Plugin
 			unsettleWorld();
 		}
 
-		// The owner claim is scoped to one POH visit, exactly as Chat Commands
-		// scopes it: any region load or hop drops it, so a friend's log can
-		// never linger and gate (or worse, misattribute) a later harvest.
+		// The owner is known for one POH visit, as in Chat Commands: any region load or hop forgets it, so a friend's
+		// log can never linger and block a later reading, or pass for the player's own.
 		if (event.getGameState() == GameState.LOADING
 			|| event.getGameState() == GameState.HOPPING)
 		{
@@ -545,9 +541,8 @@ public class KillClogPlugin extends Plugin
 			kclogCommand.handleKcItem(event, clogIndex, kcCache);
 		}
 
-		// RuneLite keeps one registered handler per command string, so claiming
-		// !log here would replace RuneProfile's handler. Read the raw chat line
-		// only as a fallback when RuneProfile itself is not enabled.
+		// RuneLite keeps one handler per command, so registering !log here would replace RuneProfile's. The raw chat
+		// line is read instead, and only while RuneProfile is off.
 		String message = event.getMessage();
 		if (KillClogChatCommand.isCompatibleLogCommand(event.getType(), message)
 			&& !isRuneProfileActive())
@@ -577,9 +572,8 @@ public class KillClogPlugin extends Plugin
 			}
 		}
 
-		// Players whose notification setting is popup-only never produce the
-		// personal game message; their own clan broadcast is the only chat
-		// signal of the unlock, and it carries the fresh obtained/total pair.
+		// A player whose notification setting is the popup alone never gets the game message; their own clan broadcast
+		// is the only chat line of the unlock, and it carries the log's new obtained and total.
 		if (event.getType() == ChatMessageType.CLAN_MESSAGE)
 		{
 			ClogUnlockParser.BroadcastUnlock broadcast =
@@ -756,9 +750,8 @@ public class KillClogPlugin extends Plugin
 		followWorld();
 		long hardcoreXp = world.hardcoreXp(client.getWorldType(), client::getOverallExperience);
 
-		// The account takes up its own log, following any name change (the
-		// server migrates its own copy on the next sync). Memory only; the
-		// store says no until its folder has loaded, and this retries.
+		// The account takes up its own log, following any name change (the server moves its own copy on the next sync).
+		// In memory only; the store says no until its folder has loaded, and this tries again.
 		LocalClogCache activeCache = world.captureCache();
 		Session session = sessions.current();
 		if (!accountActivated && activeCache != null && activeCache.serve(session))
@@ -830,9 +823,9 @@ public class KillClogPlugin extends Plugin
 				if (cache.serve(session))
 				{
 					sessionState.markAutoLookupStarted();
-					// The login transition often fires before the player's name is
-					// readable. This tick path waits for identity arbitration too,
-					// so a resident name-slot file can never become the self view.
+					// The login often arrives before the player's name can be read. This tick waits until the store has
+					// settled whose log it holds, so a file left under the name by another account can never show as
+					// the player's own.
 					panel.setControls(controls(cache.ownLogReady(name)));
 					captureLocalCa();
 					AccountType acctType = getLocalAccountType();
@@ -1070,9 +1063,8 @@ public class KillClogPlugin extends Plugin
 	{
 		if (isCollectionLogSearchClick(event.getMenuOption(), event.getMenuEntry().getParam1()))
 		{
-			// Arm before the game's Search action runs script 4100 for every
-			// obtained entry. Opening the interface itself is too early: its
-			// visible category can run the same script and is not a full log.
+			// Start the walk before the game's Search action runs script 4100 for every obtained item. Opening the
+			// Collection Log is too early: the page it opens on can run the same script, and that is not the whole log.
 			onCollectionLogSearch();
 		}
 		lookupMenu.handlePlayerLookup(event, config, this::openPanelAndLookup);

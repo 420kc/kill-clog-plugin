@@ -57,9 +57,8 @@ public class KillclogService
 
 	private final CircuitBreaker breaker = new CircuitBreaker("killclog.com");
 
-	// Plausibility ceiling for the game's unique counters: the real log sits
-	// around 1.7k slots, so anything past this is a corrupt or hostile value
-	// and must not be allowed to decide a coverage race.
+	// The most a log's own counters could plausibly say: the real log is about 1,700 slots, so anything past this is a
+	// broken or forged value and must not decide which log is fuller.
 	private static final int MAX_PLAUSIBLE_UNIQUE = 50_000;
 
 	private final OkHttpClient httpClient;
@@ -72,9 +71,9 @@ public class KillclogService
 	@Inject
 	private CaCatalog caCatalog;
 
-	// Membership index: normalized names of players who have synced.
-	// Null until the first successful fetch; a null index degrades to "skip the
-	// killclog leg entirely" so providers keep serving when killclog.com is down.
+	// The sync list: the names of players who have synced, as names compare. Null until the first fetch succeeds, and
+	// while it is null killclog.com isn't asked for anyone (what is cached still answers), so the other sites keep
+	// answering when killclog.com is down.
 	@Nullable private volatile Set<String> syncIndex;
 	private volatile long indexFetchedAt = 0;
 	private volatile long indexFailedAt = 0;
@@ -122,10 +121,9 @@ public class KillclogService
 	CompletableFuture<ClogResult> lookupClog(String playerName, String mode)
 	{
 		String key = modeKey(mode, playerName);
-		// The canonical catalog supplies category denominators; until it
-		// warms (a brief startup window), a fresh synced result would
-		// render dishonest totals, so the leg waits it out. Providers keep
-		// serving, and nothing is recorded against the breaker.
+		// The game's catalog gives each page its total; until it has loaded (a moment at startup), a synced log just
+		// fetched would show wrong totals, so this waits for it. The other sites keep answering, and nothing counts
+		// against the breaker.
 		if (clogs.hold(key) || clogService != null && !clogService.hasCatalog())
 		{
 			return CompletableFuture.completedFuture(clogs.values.get(key));
@@ -325,7 +323,8 @@ public class KillclogService
 	}
 
 	/**
-	 * Parse a proof-view response into a {@link ClogResult}. Response shape:
+	 * Reads a proof-view answer into a {@link ClogResult}. Its shape:
+	 *
 	 * <pre>{@code
 	 * { exists, rsn, updated_at, last_changed, unique_obtained, unique_total,
 	 *   pbs: { "Boss Name": seconds },
@@ -333,9 +332,9 @@ public class KillclogService
 	 *   clog: { items_by_category: { cat: [{ item_id, quantity, last_seen_at }] },
 	 *           total_obtained, capitalized_name } }
 	 * }</pre>
-	 * Category keys round-trip the plugin's own canon (they were pushed from
-	 * it), so no category normalization is applied. Only acquisition dates are
-	 * read; server-observed sync timestamps remain separate.
+	 *
+	 * Page names come back as the plugin sent them, so none is renamed. Of the dates, only when an item was obtained is
+	 * read; when the server saw a sync is kept apart.
 	 */
 	@Nullable
 	ClogResult parseProofView(String playerName, String json, String key)
@@ -361,9 +360,8 @@ public class KillclogService
 					int qty = Json.intField(item, "quantity");
 					if (id <= 0 || qty < 1)
 					{
-						// A missing or invalid id must not fabricate item 0,
-						// and a missing or nonpositive quantity must not
-						// fabricate an obtained item into the coverage race.
+						// A missing or bad id must not become item 0, and a missing or zero quantity must not count as
+						// an item obtained when logs are compared.
 						continue;
 					}
 					obtained.add(new ClogResult.ClogItem(id, qty,
@@ -374,11 +372,9 @@ public class KillclogService
 					continue;
 				}
 				obtainedItems.put(entry.getKey(), obtained);
-				// The category's full item list comes from the plugin's own
-				// canonical catalog, never from the obtained ids: obtained-only
-				// "catalogs" would render every category as complete and hide
-				// what's missing. Categories the catalog doesn't know yet are
-				// simply left without a denominator.
+				// A page's full item list comes from the plugin's own catalog, never from what was obtained: a list of
+				// only the obtained would show every page complete and hide what's missing. A page the catalog doesn't
+				// know yet gets no total.
 				List<Integer> catalogIds = pageItems(entry.getKey());
 				if (catalogIds != null)
 				{
@@ -389,11 +385,9 @@ public class KillclogService
 			// carried bests or counts but no items yet. It goes on to give every page its 0 of N and still keeps the
 			// bests below. Returning null would count a healthy answer against the breaker.
 
-			// Never-logged categories are absent from a sync's payload,
-			// but absence is data: the player owns none of that catalog. Seed
-			// them with catalog denominators so a lookup the sync wins
-			// renders every boss as 0-of-N with a dimmed grid instead of the
-			// generic unsynced shape.
+			// A sync leaves out the pages a player has nothing on, and that says something: they hold none of those
+			// items. Each gets its catalog total, so a lookup the sync wins shows every boss as 0 of N on a dimmed grid
+			// rather than as a player with no log.
 			if (clogService != null || clogIndex != null)
 			{
 				for (String catalogKey : pageKeys())
@@ -452,9 +446,8 @@ public class KillclogService
 					result.getPageCounts().put(line.label, count);
 				}
 			}
-			// This footer describes collection-log provenance, not merely account
-			// presence on killclog.com. PB-only proof views intentionally parse
-			// and cache as healthy empty results, but do not earn a clog source.
+			// The Sources line says where the Collection Log came from, not who is on killclog.com. A proof view with
+			// only PBs is read and cached as a good, empty answer, but is no source of a log.
 			if (!obtainedItems.isEmpty())
 			{
 				result = result.withSources(false, false, true);
