@@ -60,11 +60,13 @@ final class ClogPbs
 	// The player's own count for a label, as their log holds it; null for none.
 	private final Function<String, Integer> heldCount;
 	private String shownPage;
-	// Each line's last value as it landed: {cycle, value, the cycle of the landing before it}.
-	private final int[][] landed = new int[VARPS.length][3];
-	// The cycle the last new page drew in, and its readings, kept once it has stood alone for QUIET cycles.
+	// Each line's last value as it landed: {cycle, value, the cycle of the landing before it, landings so far}.
+	private final int[][] landed = new int[VARPS.length][4];
+	// The cycle the last new page drew in, and its readings, kept once it has stood alone for QUIET cycles, for the
+	// profile it drew under: a hop to another kind of world changes the profile inside a tick.
 	private int drawnAt = NONE;
 	private final List<Runnable> waiting = new ArrayList<>();
+	private String waitingProfile;
 	// Each count line's varp as the page shown last stood when it drew; null before any page.
 	private final Integer[] drawnCounts = new Integer[VARPS.length - COUNTS];
 	private final java.util.Set<String> cleared = new java.util.HashSet<>();
@@ -105,6 +107,7 @@ final class ClogPbs
 		{
 			return;
 		}
+		waitingProfile = configManager.getRSProfileKey();
 		boolean timed = !UNSETTLED.contains(page.toLowerCase(Locale.ROOT));
 		String key = ClogService.bossToCategory(page);
 		for (Widget line : client.getWidget(InterfaceID.Collection.HEADER_TEXT).getDynamicChildren())
@@ -139,13 +142,13 @@ final class ClogPbs
 	private void read(int slot, int cycle, IntConsumer keep)
 	{
 		int[] line = landed[slot];
-		int at = line[0];
+		int landings = line[3];
 		int value = line[1];
-		if (at >= cycle - 1 && line[2] < cycle - 1)
+		if (line[0] >= cycle - 1 && line[2] < cycle - 1)
 		{
 			waiting.add(() ->
 			{
-				if (line[0] == at)
+				if (line[3] == landings)
 				{
 					keep.accept(value);
 				}
@@ -159,7 +162,7 @@ final class ClogPbs
 		int age = cycle - drawnAt;
 		if (age > QUIET)
 		{
-			if (age < STALE)
+			if (age < STALE && Objects.equals(waitingProfile, configManager.getRSProfileKey()))
 			{
 				waiting.forEach(Runnable::run);
 			}
@@ -221,6 +224,7 @@ final class ClogPbs
 				settle(client.getGameCycle());
 				int[] line = landed[slot];
 				line[2] = line[0];
+				line[3]++;
 				line[0] = client.getGameCycle();
 				line[1] = client.getVarpValue(varpId);
 			}

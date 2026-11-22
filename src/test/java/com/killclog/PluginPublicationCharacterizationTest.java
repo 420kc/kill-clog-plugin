@@ -1188,6 +1188,31 @@ public class PluginPublicationCharacterizationTest
 		verify(league, never()).setPageCount(any(), any(), anyInt());
 	}
 
+	/** A page's own time, read as its page draws, waits for the page to stand alone and is kept by the game tick. */
+	@Test
+	public void aPagesReadingIsKeptAtTheGameTick()
+	{
+		net.runelite.api.widgets.Widget[] lines = new net.runelite.api.widgets.Widget[3];
+		String[] text = {"Vorkath", "Obtained: <col=ffff00>5/6</col>", "Personal Best: <col=ffffff>1:02.40</col>"};
+		for (int i = 0; i < lines.length; i++)
+		{
+			lines[i] = mock(net.runelite.api.widgets.Widget.class);
+			when(lines[i].getText()).thenReturn(text[i]);
+		}
+		net.runelite.api.widgets.Widget header = mock(net.runelite.api.widgets.Widget.class);
+		when(header.getDynamicChildren()).thenReturn(lines);
+		when(client.getWidget(net.runelite.api.gameval.InterfaceID.Collection.HEADER_TEXT)).thenReturn(header);
+		when(client.getGameCycle()).thenReturn(1000);
+		when(client.getVarpValue(net.runelite.api.gameval.VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT)).thenReturn(104);
+		varp(net.runelite.api.gameval.VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT);
+		plugin.onScriptPostFired(new net.runelite.api.events.ScriptPostFired(net.runelite.api.ScriptID.COLLECTION_DRAW_LIST));
+		verify(configManager, never()).setRSProfileConfiguration(eq("killclog"), eq("pagepb.vorkath"), any());
+		// Nothing else drawn or sent: only the game tick, half a second on, can keep it.
+		when(client.getGameCycle()).thenReturn(1030);
+		ticks(1);
+		verify(configManager).setRSProfileConfiguration("killclog", "pagepb.vorkath", 62.4);
+	}
+
 	private void unlockMessage() throws Exception
 	{
 		net.runelite.api.events.ChatMessage unlock = new net.runelite.api.events.ChatMessage();

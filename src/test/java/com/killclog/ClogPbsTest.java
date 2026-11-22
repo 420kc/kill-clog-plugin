@@ -211,7 +211,7 @@ public class ClogPbsTest
 		draws(3);
 		verify(configManager).setRSProfileConfiguration("killclog", "pagepb.zulrah", 55.8);
 
-		// The same cycle: a row on any other tab, and a tab's own first page (the second log).
+		// The same cycle: a row on any other tab, and those tabs' own first pages (the second log's 26 lone draws).
 		page("Vorkath", "Obtained: <col=ffff00>5/6</col>", "Personal Best: <col=ffffff>1:02.40</col>");
 		sends(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT, 104);
 		drawsNow(3);
@@ -347,6 +347,69 @@ public class ClogPbsTest
 	}
 
 	@Test
+	public void aWaitingReadingNeverCrossesToAnotherProfile()
+	{
+		// A hop to another kind of world inside the tick the page opened in: RuneLite's profile changes at once.
+		when(configManager.getRSProfileKey()).thenReturn("rsprofile.main");
+		page("Vorkath", "Obtained: <col=ffff00>5/6</col>", "Personal Best: <col=ffffff>1:02.40</col>");
+		sends(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT, 104);
+		drawsNow(1);
+		when(configManager.getRSProfileKey()).thenReturn("rsprofile.league");
+		ticks();
+		verify(configManager, never()).setRSProfileConfiguration(anyString(), anyString(), any());
+	}
+
+	@Test
+	public void aPageWaitsThroughATickThatComesTooSoonAndReadsAtTheNext()
+	{
+		// A game tick inside the quiet cycles settles nothing; the next one, thirty cycles on, does.
+		page("Vorkath", "Obtained: <col=ffff00>5/6</col>", "Personal Best: <col=ffffff>1:02.40</col>");
+		sends(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT, 104);
+		drawsNow(1);
+		cycle += ClogPbs.QUIET;
+		pbs.settle(cycle);
+		verify(configManager, never()).setRSProfileConfiguration(anyString(), anyString(), any());
+		cycle += 30;
+		pbs.settle(cycle);
+		verify(configManager).setRSProfileConfiguration("killclog", "pagepb.vorkath", 62.4);
+	}
+
+	@Test
+	public void theNextPageDrawnSettlesTheLastAndAThirdInsideAPairsQuietCyclesReadsNothing()
+	{
+		// No tick between two pages a third of a second apart, the second sent nothing: the first is kept as the
+		// second draws.
+		page("Vorkath", "Obtained: <col=ffff00>5/6</col>", "Personal Best: <col=ffffff>1:02.40</col>");
+		sends(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT, 104);
+		drawsNow(1);
+		cycle += 20;
+		page("Zulrah", "Obtained: <col=ffff00>0/9</col>", "Personal Best: <col=ffffff>1:02.40</col>");
+		drawsNow(1);
+		verify(configManager).setRSProfileConfiguration("killclog", "pagepb.vorkath", 62.4);
+
+		// The second log's Callisto and Artio then Cerberus, 28 cycles apart: each reads. Then a pair, and a third page
+		// four cycles behind the pair's second: the quiet cycles count from the last page drawn, so it reads nothing.
+		cycle += 28;
+		page("Cerberus", "Obtained: <col=ffff00>5/7</col>", "Personal Best: <col=ffffff>1:00.00</col>");
+		sends(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT, 100);
+		draws(1);
+		verify(configManager).setRSProfileConfiguration("killclog", "pagepb.cerberus", 60.0);
+		page("Araxxor", "Obtained: <col=ffff00>2/9</col>", "Personal Best: <col=ffffff>1:40.80</col>");
+		sends(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT, 168);
+		drawsNow(1);
+		cycle += 3;
+		page("Amoxliatl", "Obtained: <col=ffff00>3/4</col>", "Personal Best: <col=ffffff>0:30.00</col>");
+		sends(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT, 50);
+		drawsNow(1);
+		cycle += 3;
+		page("Alchemical Hydra", "Obtained: <col=ffff00>10/11</col>", "Personal Best: <col=ffffff>1:41.40</col>");
+		sends(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT, 169);
+		drawsNow(1);
+		ticks();
+		verify(configManager, times(2)).setRSProfileConfiguration(anyString(), anyString(), any());
+	}
+
+	@Test
 	public void twoValuesForOneLineAboutOneDrawAreNobodys()
 	{
 		// In one cycle, or one in each of the draw's two cycles: nothing says which page each was sent for.
@@ -359,6 +422,12 @@ public class ClogPbsTest
 		sends(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT, 98);
 		page("Araxxor", "Obtained: <col=ffff00>10/10</col>", "Personal Best: <col=ffffff>0:58.80</col>");
 		drawsNow(1);
+		ticks();
+		// Or the second in the draw's own cycle, after the draw.
+		page("Vorkath", "Obtained: <col=ffff00>5/6</col>", "Personal Best: <col=ffffff>1:02.40</col>");
+		sends(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT, 104);
+		drawsNow(1);
+		sends(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT, 105);
 		ticks();
 		verify(configManager, never()).setRSProfileConfiguration(anyString(), anyString(), any());
 	}
