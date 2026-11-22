@@ -14,13 +14,14 @@ import net.runelite.client.util.Text;
  * with a sync as source "clog". The page header shows it. The value comes from a varp in game ticks, exact whatever
  * the player's timing setting, and replaces whatever was kept for that page.
  *
- * The game sends a page's numbers one client cycle before it draws the page, and sends nothing for a page with no
- * record or for a value the varp already holds. Two pages clicked inside one tick are sent a cycle apart and drawn
- * a cycle apart, so the first is drawn after the second's numbers are in, and the game's own header shows them on
- * it. So a page newly on screen takes the value that landed in the cycle before it drew, as it landed, once, and
- * never the varp as it stands at the draw. A page that got no value, a redraw, a value that lands in any other
- * cycle, and two values for one line in one cycle take nothing: otherwise the next page's time is filed under the
- * page before it.
+ * The game sends a page's numbers in the client cycle it draws the page or the one before, and sends nothing for a
+ * page with no record or for a value the varp already holds. Two rows clicked inside one tick are answered
+ * together: both pages draw in the same cycle or a cycle apart, after both pages' numbers are in, and the game's
+ * own header shows the second page's numbers on the first. Nothing in the timing says whose numbers are whose
+ * then, so a page reads only when it is the only page newly drawn for QUIET cycles either side. Its value is the
+ * line's one landing in the cycle it drew or the cycle before, still the line's last when the wait ends. A page
+ * that got no value, a redraw, a value that lands at any other moment, and two values for one line take nothing:
+ * otherwise one page's time is filed under the page beside it.
  *
  * As a second check, a page also never takes the time the page
  * shown before it holds, read from its page, its kills or the Adventure Log. It looks one page back, at times
@@ -47,6 +48,11 @@ final class ClogPbs
 		VarPlayerID.COLLECTION_CATEGORY_COUNT2, VarPlayerID.COLLECTION_CATEGORY_COUNT3};
 	private static final int COUNTS = 2;
 	private static final int NONE = -1;
+	// The client cycles that must separate two newly drawn pages for either to be read. Pages answered together draw
+	// at most one cycle apart; pages clicked in different ticks about thirty.
+	/* package */ static final int QUIET = 5;
+	// A page still waiting after this many cycles was never settled by a tick (a logout): its numbers are dropped.
+	private static final int STALE = 100;
 
 	private final ConfigManager configManager;
 	// Hands a page count read off the player's own page (label, count) to their log.
@@ -54,8 +60,11 @@ final class ClogPbs
 	// The player's own count for a label, as their log holds it; null for none.
 	private final Function<String, Integer> heldCount;
 	private String shownPage;
-	// Each line's last two values as they landed, until a page takes one: {cycle, value, the cycle before, its value}.
-	private final int[][] landed = new int[VARPS.length][4];
+	// Each line's last value as it landed: {cycle, value, the cycle of the landing before it}.
+	private final int[][] landed = new int[VARPS.length][3];
+	// The cycle the last new page drew in, and its readings, kept once it has stood alone for QUIET cycles.
+	private int drawnAt = NONE;
+	private final List<Runnable> waiting = new ArrayList<>();
 	// Each count line's varp as the page shown last stood when it drew; null before any page.
 	private final Integer[] drawnCounts = new Integer[VARPS.length - COUNTS];
 	private final java.util.Set<String> cleared = new java.util.HashSet<>();
@@ -74,6 +83,8 @@ final class ClogPbs
 	/** The log redrew a page's header (script 2731); client thread. */
 	void pageDrawn(Client client)
 	{
+		int cycle = client.getGameCycle();
+		settle(cycle);
 		String page = shownPage(client);
 		if (page == null || page.equals(shownPage))
 		{
@@ -81,17 +92,18 @@ final class ClogPbs
 		}
 		String before = shownPage;
 		shownPage = page;
-		// What each line was sent for this page: the varps themselves may already hold the next page's.
-		int[] sent = new int[VARPS.length];
-		for (int slot = 0; slot < VARPS.length; slot++)
-		{
-			sent[slot] = sentIn(slot, client.getGameCycle() - 1);
-		}
 		Integer[] drawnBefore = drawnCounts.clone();
 		for (int slot = 0; slot < drawnCounts.length; slot++)
 		{
-			int own = sent[COUNTS + slot];
-			drawnCounts[slot] = own != NONE ? own : client.getVarpValue(VARPS[COUNTS + slot]);
+			drawnCounts[slot] = client.getVarpValue(VARPS[COUNTS + slot]);
+		}
+		// A page drawn within QUIET cycles of the last one costs both their readings: that one's wait ends here.
+		waiting.clear();
+		boolean alone = cycle - drawnAt > QUIET;
+		drawnAt = cycle;
+		if (!alone)
+		{
+			return;
 		}
 		boolean timed = !UNSETTLED.contains(page.toLowerCase(Locale.ROOT));
 		String key = ClogService.bossToCategory(page);
@@ -99,22 +111,59 @@ final class ClogPbs
 		{
 			String text = Text.removeTags(line.getText());
 			PageCounts.Line count = PageCounts.line(key, text);
-			if (count != null && sent[COUNTS + count.slot] != NONE)
+			if (count != null)
 			{
-				int value = sent[COUNTS + count.slot];
-				if (!countBefore(before, count.slot, value, drawnBefore))
+				read(COUNTS + count.slot, cycle, value ->
 				{
-					countRead.accept(count.label, value);
-				}
+					if (!countBefore(before, count.slot, value, drawnBefore))
+					{
+						countRead.accept(count.label, value);
+					}
+				});
 			}
 			else if (timed && text.startsWith("Personal Best Corrupted:"))
 			{
-				record(AdvLogPbs.canonicalSection("The Corrupted Gauntlet"), sent[1], before);
+				read(1, cycle, ticks -> record(AdvLogPbs.canonicalSection("The Corrupted Gauntlet"), ticks, before));
 			}
 			else if (timed && text.startsWith("Personal Best:"))
 			{
-				record(AdvLogPbs.canonicalSection(page), sent[0], before);
+				read(0, cycle, ticks -> record(AdvLogPbs.canonicalSection(page), ticks, before));
 			}
+		}
+	}
+
+	/**
+	 * A line's value for the page drawn in this cycle, to keep once the page has stood alone: the line's only
+	 * landing in this cycle or the one before, and only while it is still the line's last.
+	 */
+	private void read(int slot, int cycle, IntConsumer keep)
+	{
+		int[] line = landed[slot];
+		int at = line[0];
+		int value = line[1];
+		if (at >= cycle - 1 && line[2] < cycle - 1)
+		{
+			waiting.add(() ->
+			{
+				if (line[0] == at)
+				{
+					keep.accept(value);
+				}
+			});
+		}
+	}
+
+	/** Keeps the last new page's numbers once it has stood alone for QUIET cycles; each game tick and each draw. */
+	void settle(int cycle)
+	{
+		int age = cycle - drawnAt;
+		if (age > QUIET)
+		{
+			if (age < STALE)
+			{
+				waiting.forEach(Runnable::run);
+			}
+			waiting.clear();
 		}
 	}
 
@@ -161,42 +210,21 @@ final class ClogPbs
 		return false;
 	}
 
-	/** A varp changed (onVarbitChanged); client thread. A line's value, for the page the log draws next cycle. */
+	/** A varp changed (onVarbitChanged); client thread. A line's value landed, for a page the log draws about now. */
 	void varpChanged(Client client, int varpId)
 	{
 		for (int slot = 0; slot < VARPS.length; slot++)
 		{
-			int[] line = landed[slot];
-			if (VARPS[slot] != varpId)
+			if (VARPS[slot] == varpId)
 			{
-				continue;
-			}
-			if (line[0] == client.getGameCycle())
-			{
-				// A second value in one cycle: nothing says which page each was sent for.
-				line[1] = NONE;
-				continue;
-			}
-			line[2] = line[0];
-			line[3] = line[1];
-			line[0] = client.getGameCycle();
-			line[1] = client.getVarpValue(varpId);
-		}
-	}
-
-	/** The value a line was sent in a cycle, for one page only; NONE when nothing landed then, or two values did. */
-	private int sentIn(int slot, int cycle)
-	{
-		int[] line = landed[slot];
-		for (int at = 0; at < line.length; at += 2)
-		{
-			if (line[at] == cycle)
-			{
-				line[at] = NONE;
-				return line[at + 1];
+				// A page whose wait is over keeps its numbers before this one lands: it is a later page's.
+				settle(client.getGameCycle());
+				int[] line = landed[slot];
+				line[2] = line[0];
+				line[0] = client.getGameCycle();
+				line[1] = client.getVarpValue(varpId);
 			}
 		}
-		return NONE;
 	}
 
 	/** The page the log's header shows, when it is the player's own log; null otherwise. */

@@ -721,6 +721,7 @@ public class KillClogPlugin extends Plugin
 	@Subscribe
 	public void onGameTick(GameTick event)
 	{
+		clogPbs.settle(client.getGameCycle());
 		// Unlocks heard since the last tick run after every subscriber to this one, RuneLite's LootManager among them,
 		// which posts the game's loot credit for it: Hooks.tick posts the game tick, then runs what was invoked later. A
 		// chat line can arrive a client cycle before its tick, and an unlock read before its credit would take a plain

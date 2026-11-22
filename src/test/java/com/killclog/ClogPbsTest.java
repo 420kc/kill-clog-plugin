@@ -69,15 +69,28 @@ public class ClogPbsTest
 		pbs.varpChanged(client, varp);
 	}
 
-	/** The log draws the page on screen in the next cycle: once as it opens, then once or twice more as it settles. */
+	/**
+	 * The log draws the page on screen in the next cycle, as the Bosses tab does: once as it opens, then once or twice
+	 * more as it settles. Half a tick on, the game tick settles what it read.
+	 */
 	private void draws(int times)
 	{
 		cycle++;
 		drawsNow(times);
-		cycle += 15;
+		ticks();
 	}
 
-	/** The log draws the page in the cycle the clock stands at; the next line sent lands in the cycle after. */
+	/** Half a tick passes with no page drawn, and the game tick settles the page on screen. */
+	private void ticks()
+	{
+		cycle += 15;
+		pbs.settle(cycle);
+	}
+
+	/**
+	 * The log draws the page in the cycle the clock stands at, the cycle its numbers land in on every tab but Bosses;
+	 * the next line sent lands in the cycle after.
+	 */
 	private void drawsNow(int times)
 	{
 		landing = false;
@@ -183,36 +196,36 @@ public class ClogPbsTest
 	}
 
 	@Test
-	public void aTimeIsTakenOnlyFromTheCycleBeforeItsDraw()
+	public void aTimeIsTakenFromTheCycleItsPageDrawsInOrTheOneBefore()
 	{
 		// Two cycles before the draw is some other moment's value.
 		page("Vorkath", "Obtained: <col=ffff00>5/6</col>", "Personal Best: <col=ffffff>1:02.40</col>");
 		sends(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT, 104);
 		cycle++;
 		draws(1);
-		// The cycle the page draws in is left as well: by the game's order it is the next page's, when one follows. A
-		// tab's first page drew that way once on 11/22 (Chambers of Xeric), and reads when it is next opened from a row.
-		page("Zulrah", "Obtained: <col=ffff00>4/9</col>", "Personal Best: <col=ffffff>0:55.80</col>");
-		sends(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT, 93);
-		drawsNow(3);
 		verify(configManager, never()).setRSProfileConfiguration(anyString(), anyString(), any());
 
-		cycle += 20;
+		// The cycle before: a row on the Bosses tab (the first log, 23 draws of 23).
+		page("Zulrah", "Obtained: <col=ffff00>4/9</col>", "Personal Best: <col=ffffff>0:55.80</col>");
+		sends(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT, 93);
+		draws(3);
+		verify(configManager).setRSProfileConfiguration("killclog", "pagepb.zulrah", 55.8);
+
+		// The same cycle: a row on any other tab, and a tab's own first page (the second log).
 		page("Vorkath", "Obtained: <col=ffff00>5/6</col>", "Personal Best: <col=ffffff>1:02.40</col>");
 		sends(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT, 104);
-		draws(1);
+		drawsNow(3);
+		verify(configManager, never()).setRSProfileConfiguration(eq("killclog"), eq("pagepb.vorkath"), any());
+		ticks();
 		verify(configManager).setRSProfileConfiguration("killclog", "pagepb.vorkath", 62.4);
 	}
 
 	@Test
-	public void twoPagesClickedInsideATickEachTakeTheirOwnTime()
+	public void twoBossesClickedInsideATickReadNothingAndEachReadsWhenClickedAlone()
 	{
-		// The log of 11/22, three times over: the Alchemical Hydra then Amoxliatl, clicked inside one tick. The Hydra's
+		// The first log, three times over: the Alchemical Hydra then Amoxliatl, clicked inside one tick. The Hydra's
 		// numbers land, Amoxliatl's land a cycle later, and only then does the Hydra draw, with Amoxliatl's time and
-		// kills in the game's own header. Amoxliatl draws the cycle after.
-		page("Araxxor", "Obtained: <col=ffff00>10/10</col>", "Personal Best: <col=ffffff>0:58.80</col>");
-		sends(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT, 98);
-		draws(3);
+		// kills in the game's own header; Amoxliatl draws the cycle after. 2.8.3 filed 0:30 under the Hydra.
 		sends(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT, 169);
 		landing = false;
 		sends(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT, 50);
@@ -222,35 +235,131 @@ public class ClogPbsTest
 		page("Amoxliatl", "Obtained: <col=ffff00>3/4</col>", "Personal Best: <col=ffffff>0:30.00</col>",
 			"Amoxliatl kills: <col=ffffff>420</col>");
 		draws(1);
-		verify(configManager).setRSProfileConfiguration("killclog", "pagepb.araxxor", 58.8);
+		verify(configManager, never()).setRSProfileConfiguration(anyString(), anyString(), any());
+
+		// A tick later the Hydra alone, as the log goes on: its own time.
+		sends(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT, 169);
+		page("Alchemical Hydra", "Obtained: <col=ffff00>10/11</col>", "Personal Best: <col=ffffff>1:41.40</col>");
+		draws(1);
 		verify(configManager).setRSProfileConfiguration("killclog", "pagepb.alchemical hydra", 101.4);
-		verify(configManager).setRSProfileConfiguration("killclog", "pagepb.amoxliatl", 30.0);
-		verify(configManager, times(3)).setRSProfileConfiguration(anyString(), anyString(), any());
+		verify(configManager, times(1)).setRSProfileConfiguration(anyString(), anyString(), any());
 	}
 
 	@Test
 	public void aPageSentNothingNeverTakesTheNextPagesTimeHoweverFastTheClicks()
 	{
-		// The same log's Abyssal Sire then Amoxliatl: nothing lands for the first page, Amoxliatl's time lands in the
+		// The first log's Abyssal Sire then Amoxliatl: nothing lands for the first page, Amoxliatl's time lands in the
 		// cycle the first page draws, and Amoxliatl draws the cycle after. A page with the line and no record stands
-		// where the Sire does here: it is sent nothing and is drawn showing the next page's time.
+		// where the Sire does: it is sent nothing and is drawn showing the next page's time. 2.8.3 kept it there.
 		sends(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT, 50);
 		page("Alchemical Hydra", "Obtained: <col=ffff00>0/11</col>", "Personal Best: <col=ffffff>0:30.00</col>");
 		drawsNow(3);
 		page("Amoxliatl", "Obtained: <col=ffff00>3/4</col>", "Personal Best: <col=ffffff>0:30.00</col>");
 		draws(1);
-		verify(configManager).setRSProfileConfiguration("killclog", "pagepb.amoxliatl", 30.0);
-		verify(configManager, times(1)).setRSProfileConfiguration(anyString(), anyString(), any());
+		verify(configManager, never()).setRSProfileConfiguration(anyString(), anyString(), any());
 	}
 
 	@Test
-	public void twoValuesForOneLineInOneCycleAreNobodys()
+	public void twoRaidsClickedInsideATickReadNothingAndEachReadsWhenClickedAlone()
 	{
-		// Never logged, so never trusted: with both in one cycle nothing says which page each was sent for.
+		// The second log, on the Raids tab: the Theatre of Blood then the Tombs of Amascut inside one tick. Both pages'
+		// numbers land in one cycle and both pages draw in it, the Theatre under the Tombs' counts. 2.8.3 read the
+		// Tombs' 19 Entry completions as the Theatre's.
+		sends(VarPlayerID.COLLECTION_CATEGORY_COUNT3, 5);
+		sends(VarPlayerID.COLLECTION_CATEGORY_COUNT2, 6);
+		sends(VarPlayerID.COLLECTION_CATEGORY_COUNT, 430);
+		sends(VarPlayerID.COLLECTION_CATEGORY_COUNT3, 101);
+		sends(VarPlayerID.COLLECTION_CATEGORY_COUNT2, 19);
+		sends(VarPlayerID.COLLECTION_CATEGORY_COUNT, 263);
+		page("Theatre of Blood", "Obtained: <col=ffff00>0/17</col>", "Theatre of Blood completions: <col=ffffff>263</col>",
+			"Theatre of Blood (Entry) completions: <col=ffffff>19</col>");
+		drawsNow(1);
+		page("Tombs of Amascut", "Obtained: <col=ffff00>16/27</col>", "Tombs of Amascut completions: <col=ffffff>263</col>",
+			"Tombs of Amascut (Entry) completions: <col=ffffff>19</col>");
+		drawsNow(3);
+		ticks();
+		assertTrue(counts.toString(), counts.isEmpty());
+
+		// Each clicked alone, as the same log has them: its numbers land in the cycle it draws.
+		page("Theatre of Blood", "Obtained: <col=ffff00>7/17</col>", "Theatre of Blood completions: <col=ffffff>430</col>",
+			"Theatre of Blood (Entry) completions: <col=ffffff>6</col>");
+		sends(VarPlayerID.COLLECTION_CATEGORY_COUNT3, 5);
+		sends(VarPlayerID.COLLECTION_CATEGORY_COUNT2, 6);
+		sends(VarPlayerID.COLLECTION_CATEGORY_COUNT, 430);
+		drawsNow(3);
+		ticks();
+		page("Tombs of Amascut", "Obtained: <col=ffff00>16/27</col>", "Tombs of Amascut completions: <col=ffffff>263</col>",
+			"Tombs of Amascut (Entry) completions: <col=ffffff>19</col>");
+		sends(VarPlayerID.COLLECTION_CATEGORY_COUNT3, 101);
+		sends(VarPlayerID.COLLECTION_CATEGORY_COUNT2, 19);
+		sends(VarPlayerID.COLLECTION_CATEGORY_COUNT, 263);
+		drawsNow(3);
+		ticks();
+		assertEquals(java.util.List.of("Theatre of Blood (Entry) completions=6", "Tombs of Amascut (Entry) completions=19"),
+			counts);
+	}
+
+	@Test
+	public void aPageDrawnWithinTheQuietCyclesOfAnotherReadsNothingAndOneJustPastThemReads()
+	{
+		// Two pages drawn QUIET cycles apart: neither. The first one's wait ends when the second draws.
+		page("Vorkath", "Obtained: <col=ffff00>5/6</col>", "Personal Best: <col=ffffff>1:02.40</col>");
+		sends(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT, 104);
+		drawsNow(1);
+		cycle += ClogPbs.QUIET - 1;
+		page("Zulrah", "Obtained: <col=ffff00>4/9</col>", "Personal Best: <col=ffffff>0:55.80</col>");
+		sends(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT, 93);
+		drawsNow(1);
+		ticks();
+		verify(configManager, never()).setRSProfileConfiguration(anyString(), anyString(), any());
+
+		// One cycle more between them and both read: the first as the second draws, the second at the next tick.
+		page("Vorkath", "Obtained: <col=ffff00>5/6</col>", "Personal Best: <col=ffffff>1:02.40</col>");
+		sends(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT, 104);
+		drawsNow(1);
+		cycle += ClogPbs.QUIET;
+		page("Zulrah", "Obtained: <col=ffff00>4/9</col>", "Personal Best: <col=ffffff>0:55.80</col>");
+		sends(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT, 93);
+		drawsNow(1);
+		verify(configManager).setRSProfileConfiguration("killclog", "pagepb.vorkath", 62.4);
+		verify(configManager, never()).setRSProfileConfiguration(eq("killclog"), eq("pagepb.zulrah"), any());
+		ticks();
+		verify(configManager).setRSProfileConfiguration("killclog", "pagepb.zulrah", 55.8);
+	}
+
+	@Test
+	public void aLineThatChangesAgainWhileItsPageWaitsOrAPageNoTickSettledReadsNothing()
+	{
+		// Another value for the line before the wait ends: nothing says which is the page's.
+		page("Vorkath", "Obtained: <col=ffff00>5/6</col>", "Personal Best: <col=ffffff>1:02.40</col>");
+		sends(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT, 104);
+		drawsNow(1);
+		cycle++;
+		sends(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT, 105);
+		ticks();
+		// A page whose wait no tick ended (a logout inside the tick) is dropped, not kept for whoever logs in next.
+		page("Zulrah", "Obtained: <col=ffff00>4/9</col>", "Personal Best: <col=ffffff>0:55.80</col>");
+		sends(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT, 93);
+		drawsNow(1);
+		cycle += 5000;
+		pbs.settle(cycle);
+		verify(configManager, never()).setRSProfileConfiguration(anyString(), anyString(), any());
+	}
+
+	@Test
+	public void twoValuesForOneLineAboutOneDrawAreNobodys()
+	{
+		// In one cycle, or one in each of the draw's two cycles: nothing says which page each was sent for.
 		sends(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT, 169);
 		sends(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT, 50);
 		page("Alchemical Hydra", "Obtained: <col=ffff00>10/11</col>", "Personal Best: <col=ffffff>0:30.00</col>");
 		draws(1);
+		sends(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT, 169);
+		landing = false;
+		sends(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT, 98);
+		page("Araxxor", "Obtained: <col=ffff00>10/10</col>", "Personal Best: <col=ffffff>0:58.80</col>");
+		drawsNow(1);
+		ticks();
 		verify(configManager, never()).setRSProfileConfiguration(anyString(), anyString(), any());
 	}
 
@@ -348,15 +457,15 @@ public class ClogPbsTest
 		draws(1);
 		verify(configManager, never()).setRSProfileConfiguration(anyString(), anyString(), any());
 
-		// One value is one page's: a second page drawn right behind the first never takes it as well.
+		// A second page drawn right behind the first: the value is neither's.
 		page("Araxxor", "Obtained: <col=ffff00>2/9</col>", "Personal Best: <col=ffffff>1:40.80</col>");
 		sends(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT, 168);
 		cycle++;
 		drawsNow(1);
 		page("Alchemical Hydra", "Obtained: <col=ffff00>0/8</col>", "Personal Best: <col=ffffff>1:40.80</col>");
 		drawsNow(1);
-		verify(configManager).setRSProfileConfiguration("killclog", "pagepb.araxxor", 100.8);
-		verify(configManager, never()).setRSProfileConfiguration(eq("killclog"), eq("pagepb.alchemical hydra"), any());
+		ticks();
+		verify(configManager, never()).setRSProfileConfiguration(anyString(), anyString(), any());
 	}
 
 	@Test
@@ -468,18 +577,26 @@ public class ClogPbsTest
 	}
 
 	@Test
-	public void twoCountPagesClickedInsideATickEachTakeTheirOwnCount()
+	public void aTabsFirstPageAndARowClickedRightAfterItReadNothing()
 	{
-		// 11/22's log: a page's kills land with its time, so two pages clicked inside a tick draw the first under the
-		// second's count ("Alchemical Hydra kills: 420", Amoxliatl's). Each takes the count it was sent.
-		sends(VarPlayerID.COLLECTION_CATEGORY_COUNT, 1204);
+		// The second log's Other tab: Glough's Experiments and Hunter Guild drawn by turns in one cycle, the first under
+		// the Guild's 188 rumours as "Tortured Gorilla kills: 188".
+		sends(VarPlayerID.COLLECTION_CATEGORY_COUNT2, 2210);
+		sends(VarPlayerID.COLLECTION_CATEGORY_COUNT, 0);
 		landing = false;
-		sends(VarPlayerID.COLLECTION_CATEGORY_COUNT, 88);
-		page("Revenants", "Obtained: <col=ffff00>4/14</col>", "Revenant kills: <col=ffffff>88</col>");
-		drawsNow(3);
-		page("Tormented Demons", "Obtained: <col=ffff00>1/4</col>", "Tormented Demon kills: <col=ffffff>88</col>");
-		draws(1);
-		assertEquals(java.util.List.of("Revenant kills=1204", "Tormented Demon kills=88"), counts);
+		sends(VarPlayerID.COLLECTION_CATEGORY_COUNT2, 0);
+		sends(VarPlayerID.COLLECTION_CATEGORY_COUNT, 188);
+		cycle++;
+		for (int turn = 0; turn < 2; turn++)
+		{
+			page("Glough's Experiments", "Obtained: <col=ffff00>0/6</col>", "Demonic Gorilla kills: <col=ffffff>0</col>",
+				"Tortured Gorilla kills: <col=ffffff>188</col>");
+			drawsNow(1);
+			page("Hunter Guild", "Obtained: <col=ffff00>5/6</col>", "Rumours Completed: <col=ffffff>188</col>");
+			drawsNow(1);
+		}
+		ticks();
+		assertTrue(counts.toString(), counts.isEmpty());
 	}
 
 	@Test
