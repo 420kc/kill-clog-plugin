@@ -176,15 +176,13 @@ final class GameTile
 		g.drawImage(box.height == PAGE_HEIGHT ? PAGE_FRAME : box.width == WIDTH ? FRAME : WIDE_FRAME, box.x, box.y, null);
 		boolean known = tile.obtained >= 0;
 		boolean complete = known && tile.obtained >= tile.total;
-		Color color = !known ? TitleTooltip.MUTED_GRAY
-			: tile.wear != null ? tile.wear : TitleTooltip.completionColor(tile.obtained, tile.total);
+		Color color = known && tile.wear != null ? tile.wear : TitleTooltip.progressColor(tile.obtained, tile.total);
 		int center = box.x + box.width / 2;
 		boolean page = box.height == PAGE_HEIGHT;
 		Font font = g.getFont();
 		boolean scored = tile.countText != null || !known && tile.score > 0;
 		String count = tile.countText != null ? tile.countText : scored ? TitleTooltip.grouped(tile.score)
-			: tile.total <= 0 ? "" : known ? TitleTooltip.progressCountText(tile.obtained, tile.total)
-			: TitleTooltip.progressPlaceholderText(tile.total);
+			: tile.total <= 0 ? "" : TitleTooltip.progressCountText(tile.obtained, tile.total);
 		boolean bare = count.isEmpty() && !known;
 
 		// The name in bold. A page's, with no sprite under it, breaks at a space onto two lines where it must; a sprite's

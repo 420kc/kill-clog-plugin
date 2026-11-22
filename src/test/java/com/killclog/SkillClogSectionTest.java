@@ -146,8 +146,7 @@ public class SkillClogSectionTest
 			for (SkillClogSection section : sections)
 			{
 				assertEquals(skill.getName(), "--/" + section.itemIds().size(),
-					SkillTooltip.progressText(
-						section.primary(), section.itemIds().size()));
+					TitleTooltip.progressCountText(section.primary().obtainedCount(), section.itemIds().size()));
 				assertTrue(skill.getName(), section.primary().obtainedIds().isEmpty());
 			}
 		}

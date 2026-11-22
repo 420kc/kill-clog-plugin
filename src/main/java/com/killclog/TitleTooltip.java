@@ -197,13 +197,13 @@ public abstract class TitleTooltip extends NativeTooltip
 	 */
 	public void setObtained(int obtained, int total)
 	{
-		setSubtitle("Obtained: ", obtained >= 0 ? progressCountText(obtained, total) : progressPlaceholderText(total),
-			obtained >= 0 ? completionColor(obtained, total) : MUTED_GRAY);
+		setSubtitle("Obtained: ", progressCountText(obtained, total), progressColor(obtained, total));
 	}
 
-	protected static String progressPlaceholderText(int total)
+	/** A log count's color wherever a card writes one: the stoplight once known, muted until then. */
+	static Color progressColor(int obtained, int total)
 	{
-		return "--/" + (total >= 0 ? String.valueOf(total) : "?");
+		return obtained >= 0 ? completionColor(obtained, total) : MUTED_GRAY;
 	}
 
 	/** Native OSRS stoplight progress color: red for none, yellow for some, green for complete. */
@@ -222,7 +222,7 @@ public abstract class TitleTooltip extends NativeTooltip
 
 	protected static String progressCountText(int obtained, int total)
 	{
-		return (obtained < 0 ? "?" : String.valueOf(obtained))
+		return (obtained < 0 ? "--" : String.valueOf(obtained))
 			+ "/" + (total < 0 ? "?" : String.valueOf(total));
 	}
 

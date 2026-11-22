@@ -85,8 +85,7 @@ public class SkillCellGridTest
 		assertEquals("--/2", TestViews.subtitle(smithing));
 		assertEquals(1, TestViews.sections(smithing).size());
 		SkillClogSection section = TestViews.sections(smithing).get(0);
-		assertEquals("--/2", SkillTooltip.progressText(
-			section.primary(), section.itemIds().size()));
+		assertEquals("--/2", TitleTooltip.progressCountText(section.primary().obtainedCount(), section.itemIds().size()));
 		assertTrue(section.primary().obtainedIds().isEmpty());
 	}
 

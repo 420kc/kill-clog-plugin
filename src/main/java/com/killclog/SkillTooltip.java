@@ -98,8 +98,8 @@ public class SkillTooltip extends TitleTooltip
 			{
 				log.add(CardBody.section(section.heading()));
 			}
-			log.add(CardBody.line("Obtained: ", progressText(items, total),
-				items.synced() ? completionColor(items.obtainedCount(), total) : MUTED_GRAY));
+			log.add(CardBody.line("Obtained: ", progressCountText(items.obtainedCount(), total),
+				progressColor(items.obtainedCount(), total)));
 			if (countCategory != null && section.isCategory(countCategory))
 			{
 				log.add(CardBody.line(countLabel, count >= 0 ? grouped(count) : "--",
@@ -123,11 +123,6 @@ public class SkillTooltip extends TitleTooltip
 		}, (c, y) -> c.hits.addAll(TooltipItemSprites.paintGrid(c.g, sprites, section.itemNames(), index, ids,
 			section.primary().obtainedIds(), section.primary().obtainedCounts(), c.inset(), y, cols.applyAsInt(c),
 			CardBody.GRID_SPRITE, CardBody.GRID_CELL, section.slots(cols.applyAsInt(c)))));
-	}
-
-	static String progressText(SkillClogSection.PlayerItems items, int total)
-	{
-		return items.synced() ? progressCountText(items.obtainedCount(), total) : progressPlaceholderText(total);
 	}
 
 	@Override

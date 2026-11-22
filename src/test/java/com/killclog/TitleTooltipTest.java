@@ -352,8 +352,8 @@ public class TitleTooltipTest
 		// that as "?" rather than claiming a total.
 		assertEquals("12/?", TitleTooltip.progressCountText(12, -1));
 		assertEquals("12/100", TitleTooltip.progressCountText(12, 100));
-		assertEquals("--/100", TitleTooltip.progressPlaceholderText(100));
-		assertEquals("--/?", TitleTooltip.progressPlaceholderText(-1));
+		assertEquals("--/100", TitleTooltip.progressCountText(-1, 100));
+		assertEquals("--/?", TitleTooltip.progressCountText(-1, -1));
 	}
 
 	@Test
