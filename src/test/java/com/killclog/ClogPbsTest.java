@@ -53,24 +53,39 @@ public class ClogPbsTest
 	}
 
 	private int cycle = 1000;
+	// Whether the cycle the next line lands in has begun: one page's lines land together.
+	private boolean landing;
 
-	/** The server sends a line's time, as it does a client cycle before it draws that page. */
+	/** The server sends a line's value, a page's lines in one client cycle, the cycle before it draws that page. */
 	private void sends(int varp, int ticks)
 	{
+		if (!landing)
+		{
+			cycle++;
+			landing = true;
+		}
 		when(client.getVarpValue(varp)).thenReturn(ticks);
-		when(client.getGameCycle()).thenReturn(++cycle);
+		when(client.getGameCycle()).thenReturn(cycle);
 		pbs.varpChanged(client, varp);
 	}
 
-	/** The log draws the page on screen: once as it opens, then once or twice more as it settles. */
+	/** The log draws the page on screen in the next cycle: once as it opens, then once or twice more as it settles. */
 	private void draws(int times)
 	{
-		when(client.getGameCycle()).thenReturn(++cycle);
+		cycle++;
+		drawsNow(times);
+		cycle += 15;
+	}
+
+	/** The log draws the page in the cycle the clock stands at; the next line sent lands in the cycle after. */
+	private void drawsNow(int times)
+	{
+		landing = false;
+		when(client.getGameCycle()).thenReturn(cycle);
 		for (int i = 0; i < times; i++)
 		{
 			pbs.pageDrawn(client);
 		}
-		cycle += 15;
 	}
 
 	@Test
@@ -145,7 +160,7 @@ public class ClogPbsTest
 		// lands a cycle before its page draws, while the Colosseum is still on screen. 2.7.1 filed it as Sol Heredit.
 		page("Fortis Colosseum", "Obtained: <col=ffff00>0/8</col>", "Personal Best: <col=ffffff>0:56.40</col>");
 		sends(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT, 94);
-		cycle += ClogPbs.ARRIVAL_CYCLES + 1;
+		cycle += 6;
 		draws(3);
 		sends(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT, 1346);
 		page("The Gauntlet", "Obtained: <col=ffff00>3/9</col>", "Personal Best: <col=ffffff>13:27.60</col>");
@@ -168,20 +183,75 @@ public class ClogPbsTest
 	}
 
 	@Test
-	public void aTimeIsTakenUpToFiveCyclesBeforeItsDrawAndNoEarlier()
+	public void aTimeIsTakenOnlyFromTheCycleBeforeItsDraw()
 	{
+		// Two cycles before the draw is some other moment's value.
 		page("Vorkath", "Obtained: <col=ffff00>5/6</col>", "Personal Best: <col=ffffff>1:02.40</col>");
 		sends(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT, 104);
-		when(client.getGameCycle()).thenReturn(cycle + 5);
-		pbs.pageDrawn(client);
-		verify(configManager).setRSProfileConfiguration("killclog", "pagepb.vorkath", 62.4);
-
-		cycle += 20;
+		cycle++;
+		draws(1);
+		// The cycle the page draws in is left as well: by the game's order it is the next page's, when one follows. A
+		// tab's first page drew that way once on 11/22 (Chambers of Xeric), and reads when it is next opened from a row.
 		page("Zulrah", "Obtained: <col=ffff00>4/9</col>", "Personal Best: <col=ffffff>0:55.80</col>");
 		sends(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT, 93);
-		when(client.getGameCycle()).thenReturn(cycle + 6);
-		pbs.pageDrawn(client);
-		verify(configManager, never()).setRSProfileConfiguration(eq("killclog"), eq("pagepb.zulrah"), any());
+		drawsNow(3);
+		verify(configManager, never()).setRSProfileConfiguration(anyString(), anyString(), any());
+
+		cycle += 20;
+		page("Vorkath", "Obtained: <col=ffff00>5/6</col>", "Personal Best: <col=ffffff>1:02.40</col>");
+		sends(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT, 104);
+		draws(1);
+		verify(configManager).setRSProfileConfiguration("killclog", "pagepb.vorkath", 62.4);
+	}
+
+	@Test
+	public void twoPagesClickedInsideATickEachTakeTheirOwnTime()
+	{
+		// The log of 11/22, three times over: the Alchemical Hydra then Amoxliatl, clicked inside one tick. The Hydra's
+		// numbers land, Amoxliatl's land a cycle later, and only then does the Hydra draw, with Amoxliatl's time and
+		// kills in the game's own header. Amoxliatl draws the cycle after.
+		page("Araxxor", "Obtained: <col=ffff00>10/10</col>", "Personal Best: <col=ffffff>0:58.80</col>");
+		sends(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT, 98);
+		draws(3);
+		sends(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT, 169);
+		landing = false;
+		sends(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT, 50);
+		page("Alchemical Hydra", "Obtained: <col=ffff00>0/11</col>", "Personal Best: <col=ffffff>0:30.00</col>",
+			"Alchemical Hydra kills: <col=ffffff>420</col>");
+		drawsNow(3);
+		page("Amoxliatl", "Obtained: <col=ffff00>3/4</col>", "Personal Best: <col=ffffff>0:30.00</col>",
+			"Amoxliatl kills: <col=ffffff>420</col>");
+		draws(1);
+		verify(configManager).setRSProfileConfiguration("killclog", "pagepb.araxxor", 58.8);
+		verify(configManager).setRSProfileConfiguration("killclog", "pagepb.alchemical hydra", 101.4);
+		verify(configManager).setRSProfileConfiguration("killclog", "pagepb.amoxliatl", 30.0);
+		verify(configManager, times(3)).setRSProfileConfiguration(anyString(), anyString(), any());
+	}
+
+	@Test
+	public void aPageSentNothingNeverTakesTheNextPagesTimeHoweverFastTheClicks()
+	{
+		// The same log's Abyssal Sire then Amoxliatl: nothing lands for the first page, Amoxliatl's time lands in the
+		// cycle the first page draws, and Amoxliatl draws the cycle after. A page with the line and no record stands
+		// where the Sire does here: it is sent nothing and is drawn showing the next page's time.
+		sends(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT, 50);
+		page("Alchemical Hydra", "Obtained: <col=ffff00>0/11</col>", "Personal Best: <col=ffffff>0:30.00</col>");
+		drawsNow(3);
+		page("Amoxliatl", "Obtained: <col=ffff00>3/4</col>", "Personal Best: <col=ffffff>0:30.00</col>");
+		draws(1);
+		verify(configManager).setRSProfileConfiguration("killclog", "pagepb.amoxliatl", 30.0);
+		verify(configManager, times(1)).setRSProfileConfiguration(anyString(), anyString(), any());
+	}
+
+	@Test
+	public void twoValuesForOneLineInOneCycleAreNobodys()
+	{
+		// Never logged, so never trusted: with both in one cycle nothing says which page each was sent for.
+		sends(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT, 169);
+		sends(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT, 50);
+		page("Alchemical Hydra", "Obtained: <col=ffff00>10/11</col>", "Personal Best: <col=ffffff>0:30.00</col>");
+		draws(1);
+		verify(configManager, never()).setRSProfileConfiguration(anyString(), anyString(), any());
 	}
 
 	@Test
@@ -269,7 +339,7 @@ public class ClogPbsTest
 		// the next page the player opens, one they have no record on, never takes it.
 		page("Vorkath", "Obtained: <col=ffff00>5/6</col>", "Personal Best: <col=ffffff>1:02.40</col>");
 		sends(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT, 104);
-		cycle += ClogPbs.ARRIVAL_CYCLES;
+		cycle += 5;
 		draws(1);
 		page("Zulrah", "Obtained: <col=ffff00>0/9</col>", "Personal Best: <col=ffffff>1:02.40</col>");
 		draws(1);
@@ -281,9 +351,10 @@ public class ClogPbsTest
 		// One value is one page's: a second page drawn right behind the first never takes it as well.
 		page("Araxxor", "Obtained: <col=ffff00>2/9</col>", "Personal Best: <col=ffffff>1:40.80</col>");
 		sends(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT, 168);
-		pbs.pageDrawn(client);
+		cycle++;
+		drawsNow(1);
 		page("Alchemical Hydra", "Obtained: <col=ffff00>0/8</col>", "Personal Best: <col=ffffff>1:40.80</col>");
-		pbs.pageDrawn(client);
+		drawsNow(1);
 		verify(configManager).setRSProfileConfiguration("killclog", "pagepb.araxxor", 100.8);
 		verify(configManager, never()).setRSProfileConfiguration(eq("killclog"), eq("pagepb.alchemical hydra"), any());
 	}
@@ -377,7 +448,7 @@ public class ClogPbsTest
 		draws(1);
 		page("Tormented Demons", "Obtained: <col=ffff00>1/4</col>", "Tormented Demon kills: <col=ffffff>88</col>");
 		sends(VarPlayerID.COLLECTION_CATEGORY_COUNT, 88);
-		cycle += ClogPbs.ARRIVAL_CYCLES;
+		cycle += 5;
 		draws(1);
 		// A host's log in their house.
 		page("Hunter Guild", "Obtained: <col=ffff00>3/13</col>", "Rumours Completed: <col=ffffff>150</col>");
@@ -394,6 +465,21 @@ public class ClogPbsTest
 		sends(VarPlayerID.COLLECTION_CATEGORY_COUNT, 151);
 		draws(1);
 		assertEquals(java.util.List.of("Rumours Completed=151"), counts);
+	}
+
+	@Test
+	public void twoCountPagesClickedInsideATickEachTakeTheirOwnCount()
+	{
+		// 11/22's log: a page's kills land with its time, so two pages clicked inside a tick draw the first under the
+		// second's count ("Alchemical Hydra kills: 420", Amoxliatl's). Each takes the count it was sent.
+		sends(VarPlayerID.COLLECTION_CATEGORY_COUNT, 1204);
+		landing = false;
+		sends(VarPlayerID.COLLECTION_CATEGORY_COUNT, 88);
+		page("Revenants", "Obtained: <col=ffff00>4/14</col>", "Revenant kills: <col=ffffff>88</col>");
+		drawsNow(3);
+		page("Tormented Demons", "Obtained: <col=ffff00>1/4</col>", "Tormented Demon kills: <col=ffffff>88</col>");
+		draws(1);
+		assertEquals(java.util.List.of("Revenant kills=1204", "Tormented Demon kills=88"), counts);
 	}
 
 	@Test
