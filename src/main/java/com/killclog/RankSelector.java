@@ -14,6 +14,8 @@ final class RankSelector extends JPanel
 	/** The row a board without this player shows: nothing. */
 	private static final HiscoreResult NOTHING = new HiscoreResult(null, null, null, null, null, null, null, null, null,
 		0, 0, 0, -1);
+	/** The same row while a board is loading or couldn't be read: its ranks not known, so nothing reads Unranked. */
+	private static final HiscoreResult UNANSWERED = NOTHING.withRanks(null);
 
 	private final BiFunction<String, RankLeaderboard, CompletableFuture<HiscoreResult>> fetch;
 	private final BiPredicate<String, RankLeaderboard> absent;
@@ -182,7 +184,7 @@ final class RankSelector extends JPanel
 			settle(name, base, table, fetching.join());
 			return;
 		}
-		views.put(base, base.withRow(NOTHING));
+		views.put(base, base.withRow(UNANSWERED));
 		notices.put(base, "Loading...");
 		fetching.whenComplete((row, error) -> SwingUtilities.invokeLater(() ->
 		{
@@ -196,9 +198,10 @@ final class RankSelector extends JPanel
 	/** A board without this player's row shows nothing, never another board's stats. */
 	private void settle(String name, HiscoreResult base, RankLeaderboard table, HiscoreResult row)
 	{
-		HiscoreResult view = base.withRow(row != null ? row : NOTHING);
+		boolean missing = row == null && absent.test(name, table);
+		HiscoreResult view = base.withRow(row != null ? row : missing ? NOTHING : UNANSWERED);
 		views.put(base, view);
-		notices.put(base, row == null ? absent.test(name, table) ? "Not on this leaderboard" : "Unavailable; click to retry"
+		notices.put(base, row == null ? missing ? "Not on this leaderboard" : "Unavailable; click to retry"
 			: view.isFrozen() ? "Stats frozen on this leaderboard" : "");
 	}
 

@@ -131,6 +131,8 @@ public class RankSelectorTest
 			selector.select(RankLeaderboard.NORMAL);
 			assertEquals("a board still loading shows nothing", -1, selector.view(blue).getKc("Zulrah"));
 			assertEquals("Loading...", selector.blankNotice(selector.view(blue)));
+			assertFalse("a board still loading has not answered, so no card reads it as Unranked",
+				selector.view(blue).isRankDataAvailable());
 			selector.select(RankLeaderboard.HARDCORE);
 			requests.get("Blue" + RankLeaderboard.NORMAL).complete(result(AccountType.REGULAR, HiscoreTable.STANDARD, 100, 10000));
 			requests.get("Blue" + RankLeaderboard.HARDCORE).complete(result(AccountType.REGULAR, HiscoreTable.STANDARD, 7, 10000));
@@ -218,10 +220,12 @@ public class RankSelectorTest
 			assertEquals(0, ultimate.getTotalLevel());
 			assertTrue("today's log hides like a frozen row's", ultimate.isFrozen());
 			assertEquals("Not on this leaderboard", selector.blankNotice(ultimate));
+			assertTrue("that board answered: the player is not on it", ultimate.isRankDataAvailable());
 
 			selector.select(RankLeaderboard.PURE);
 			assertEquals(-1, selector.view(base).getKc("Zulrah"));
 			assertEquals("Unavailable; click to retry", selector.blankNotice(selector.view(base)));
+			assertFalse("a board that could not be read has not answered either", selector.view(base).isRankDataAvailable());
 			assertTrue(((JButton) selector.getComponent(5)).getToolTipText().contains("Unavailable"));
 		});
 	}
