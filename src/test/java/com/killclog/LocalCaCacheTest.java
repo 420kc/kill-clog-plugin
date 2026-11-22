@@ -68,14 +68,42 @@ public class LocalCaCacheTest
 	}
 
 	@Test
+	public void lastSessionsReadingStandsAtLoginUntilThisSessionsCapture() throws Exception
+	{
+		File directory = temporaryFolder.newFolder();
+		LocalCaCache before = open(new Gson(), directory);
+		before.serve(new Session(1, "Tester", HASH));
+		before.cacheResult("Tester", HASH, Map.of(CombatAchievementTier.EASY, 4));
+
+		// The client starts again. A login is known some seconds before the game's tiers can be read.
+		LocalCaCache cache = open(new Gson(), directory);
+		Session login = new Session(2, "Tester", HASH);
+		cache.serve(login);
+		assertTrue("the card has last session's tiers at once", cache.hasDataFor("Tester"));
+		assertEquals(4, TestViews.completed(cache.getCached("Tester"), CombatAchievementTier.EASY));
+		assertNull("a sync still sends only what this login read", cache.thisLogin(login));
+		cache.cacheResult("Tester", HASH, Map.of(CombatAchievementTier.EASY, 5));
+		assertEquals(5, TestViews.completed(cache.getCached("Tester"), CombatAchievementTier.EASY));
+		assertNotNull(cache.thisLogin(login));
+
+		// A logout serves no one; the next login has them again; another account under the name reads none of it.
+		cache.serve(Session.none(3));
+		assertFalse(cache.hasDataFor("Tester"));
+		cache.serve(new Session(4, "Tester", HASH));
+		assertEquals(5, TestViews.completed(cache.getCached("Tester"), CombatAchievementTier.EASY));
+		cache.serve(new Session(5, "Tester", HASH + 1));
+		assertFalse(cache.hasDataFor("Tester"));
+	}
+
+	@Test
 	public void theLoggedInNameTypedAnotherWayStillReadsItsCas() throws Exception
 	{
 		LocalCaCache cache = open(new Gson(), temporaryFolder.newFolder());
-		cache.serve(new Session(1, "My\u00A0Name", 1L));
+		cache.serve(new Session(1, "My\u00A0Name", HASH));
 		cache.cacheResult("My\u00A0Name", HASH, Map.of(CombatAchievementTier.EASY, 1));
 		assertNotNull(cache.getCached("my_name"));
 		assertTrue(cache.hasDataFor("My-Name"));
-		cache.serve(new Session(1, "My Name", 1L));
+		cache.serve(new Session(1, "My Name", HASH));
 		assertNotNull("the same account keeps its record", cache.getCached("My\u00A0Name"));
 	}
 

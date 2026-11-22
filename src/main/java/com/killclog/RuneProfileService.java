@@ -145,19 +145,17 @@ public class RuneProfileService
 	 */
 	public CompletableFuture<CombatAchievementResult> lookup(String playerName)
 	{
-		// The player logged in: their Combat Achievements are read from the game and kept here, and stand even when
-		// empty, so RuneProfile's never replace them. The summary is still asked for, so Sources can say whether they
-		// have a RuneProfile; nothing from it replaces what the game said.
-		if (localCaCache != null && localCaCache.isActivePlayer(playerName))
+		CompletableFuture<RuneProfileSummary> summary = lookupSummary(playerName);
+		// The player logged in: their Combat Achievements are the game's, as kept here from this session or their last,
+		// and stand even when empty, so RuneProfile's never replace them. The summary is still asked for, so Sources
+		// can say whether they have a RuneProfile. Only where this PC has never read the game for them do RuneProfile's
+		// stand in, until the world settles and it is.
+		if (localCaCache != null && localCaCache.hasDataFor(playerName))
 		{
-			lookupSummary(playerName).exceptionally(ex -> null);
-			CombatAchievementResult local = localCaCache.hasDataFor(playerName)
-				? localCaCache.getCached(playerName) : null;
-			return CompletableFuture.completedFuture(local);
+			summary.exceptionally(ex -> null);
+			return CompletableFuture.completedFuture(localCaCache.getCached(playerName));
 		}
-
-		return lookupSummary(playerName).thenApply(summary ->
-			summary != null ? rebased(summary.combatAchievements) : null);
+		return summary.thenApply(held -> held != null ? rebased(held.combatAchievements) : null);
 	}
 
 	private CompletableFuture<RuneProfileSummary> lookupSummary(String playerName)

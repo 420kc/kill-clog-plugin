@@ -325,6 +325,31 @@ public class RuneProfileServiceTest
 	}
 
 	@Test
+	public void yourOwnTiersAreRuneProfilesUntilTheGameHasBeenReadOnThisPc() throws Exception
+	{
+		AtomicInteger requests = new AtomicInteger();
+		OkHttpClient client = cannedClient(200, "{\"accountType\":{\"id\":0,\"key\":\"normal\"},"
+			+ "\"combatAchievements\":[{\"name\":\"Easy\",\"completed\":41,\"total\":41}]}", requests);
+		LocalCaCache local = new LocalCaCache(new Gson(), new InlineScheduledExecutorService());
+		local.open(TestFolders.folder(temporaryFolder.newFolder()));
+		local.serve(new Session(1, "Self Probe", 1L));
+		service = new RuneProfileService(client, new Gson(), local);
+		try
+		{
+			// Logged in, nothing kept from an earlier session, the world not yet settled: RuneProfile's stand in.
+			assertEquals(41, TestViews.completed(service.lookup("Self Probe").join(), CombatAchievementTier.EASY));
+			// The game answers, and from then on only the game speaks for you.
+			local.cacheResult("Self Probe", 1L, Map.of(CombatAchievementTier.EASY, 3));
+			assertEquals(3, TestViews.completed(service.lookup("Self Probe").join(), CombatAchievementTier.EASY));
+		}
+		finally
+		{
+			client.dispatcher().executorService().shutdownNow();
+			client.connectionPool().evictAll();
+		}
+	}
+
+	@Test
 	public void testActivePlayerKeepsLocalDataButLearnsRuneProfilePresence() throws Exception
 	{
 		AtomicInteger requests = new AtomicInteger();

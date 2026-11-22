@@ -37,7 +37,7 @@ public class LocalCaCache
 	@Nullable
 	private Filepath folder;
 	private String activePlayer;
-	// The logged-in account's file, known from its first capture this session.
+	// The logged-in account's file, by its hash: what it held last session stands until this one's capture.
 	private String activeFile;
 	// The login served now, and the one the last capture was read in: a sync sends only its own login's (thisLogin).
 	private Session served;
@@ -115,12 +115,8 @@ public class LocalCaCache
 	/** The login whose tiers this store serves, from the session tracker. */
 	public synchronized void serve(Session session)
 	{
-		String name = session.getName();
-		if (name == null || !isActivePlayer(name))
-		{
-			activeFile = null;
-		}
-		activePlayer = name;
+		activeFile = session.loggedIn() ? StoreFiles.ownFileName(Long.toString(session.getAccountHash())) : null;
+		activePlayer = session.getName();
 		served = session;
 	}
 
