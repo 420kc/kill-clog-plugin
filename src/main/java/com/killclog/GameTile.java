@@ -46,6 +46,8 @@ final class GameTile
 	private static final int BAR_PARTS = 4;
 	private static final int BAR_HEIGHT = 8;
 	private static final int BAR_PAD = 5;
+	// The bar's empty track, as the game's Combat Achievements draw it.
+	static final Color BAR_TRACK = new Color(40, 35, 28);
 
 	private GameTile()
 	{
@@ -235,7 +237,7 @@ final class GameTile
 			int to = x + width * (part + 1) / BAR_PARTS;
 			g.setColor(Color.BLACK);
 			g.drawRect(from, barY, to - from - 1, BAR_HEIGHT - 1);
-			g.setColor(NativeTooltip.railTrack(ClogSummaryTooltip.BAR_TRACK));
+			g.setColor(NativeTooltip.railTrack(BAR_TRACK));
 			g.fillRect(from + 1, barY + 1, to - from - 2, BAR_HEIGHT - 2);
 			int filled = Math.min(x + lit, to - 1) - from - 1;
 			if (filled > 0)

@@ -30,6 +30,8 @@ import net.runelite.client.util.*;
 public class Cells
 {
 	private static final String SETUP_NOTICE = "Open your Collection Log to start setup automatically";
+	// A card with no player and no item list yet: the list is on its way.
+	static final String CATALOG_NOTICE = "Loading catalog...";
 
 	// Deps
 	private final SpriteManager spriteManager;
@@ -430,7 +432,7 @@ public class Cells
 			{
 				// Cold and the catalog has not arrived yet; the warm-up
 				// rebuild replaces this with the dimmed preview.
-				tip.setNotice("Loading catalog...");
+				tip.setNotice(CATALOG_NOTICE);
 			}
 		}
 		configureRank(tip, data, result, config.showTooltipRank());

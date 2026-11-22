@@ -183,7 +183,7 @@ public class SummaryCardsTest
 		JLabel owner = new JLabel();
 		new JPanel().add(owner);
 		PvmSummaryTooltip tip = (PvmSummaryTooltip) built.buildPvm(owner);
-		org.junit.Assert.assertArrayEquals(new int[]{0, 2, 0, 1}, TestViews.field(tip, "weaponCounts"));
+		org.junit.Assert.assertArrayEquals(new int[]{0, 2, 0, 1}, TestViews.field(tip, "megarareCounts"));
 	}
 
 	@Test

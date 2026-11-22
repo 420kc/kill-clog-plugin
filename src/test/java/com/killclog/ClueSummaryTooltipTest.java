@@ -144,7 +144,7 @@ public class ClueSummaryTooltipTest
 	public void aTileWithNoLogDrawsNoBar()
 	{
 		// Dylan, 2026-11-07: with no log a tile shows no bar at all, rather than an empty one.
-		int track = NativeTooltip.railTrack(ClogSummaryTooltip.BAR_TRACK).getRGB();
+		int track = NativeTooltip.railTrack(GameTile.BAR_TRACK).getRGB();
 		ClueSummaryTooltip bare = new ClueSummaryTooltip();
 		bare.setData(null, false);
 		BufferedImage without = paint(bare);

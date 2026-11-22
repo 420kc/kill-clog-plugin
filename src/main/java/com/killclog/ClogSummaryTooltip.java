@@ -32,8 +32,6 @@ public class ClogSummaryTooltip extends TitleTooltip
 	private static final int TIER_SECTION = 2;
 	private static final int SOURCE_SECTION = 3;
 	private static final String TITLE = "Collection Log";
-	// The bars' empty track, as the game's Combat Achievements draw it.
-	static final Color BAR_TRACK = new Color(40, 35, 28);
 	// Each tab's tile shows an item of its own (clog-tab-sprites.tsv); the Total's is the tier's trophy.
 	static final Map<String, Integer> TAB_SPRITES = new HashMap<>();
 	static

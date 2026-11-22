@@ -476,7 +476,7 @@ public class PvmSummaryTooltipTest
 		painted(tip);
 		List<Point> pvp = pvpTiles(tip);
 		BufferedImage image = render(tip);
-		Color track = NativeTooltip.railTrack(ClogSummaryTooltip.BAR_TRACK);
+		Color track = NativeTooltip.railTrack(GameTile.BAR_TRACK);
 		assertTrue("LMS wears its log's bar", TestViews.tileHas(image, pvp.get(0), track));
 		assertTrue("half full, in yellow", TestViews.tileHas(image, pvp.get(0), new Color(255, 255, 0)));
 		assertTrue("Soul Wars wears its own, empty", TestViews.tileHas(image, pvp.get(1), track));

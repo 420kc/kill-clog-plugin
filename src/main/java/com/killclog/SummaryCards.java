@@ -151,14 +151,14 @@ final class SummaryCards
 				}
 				else
 				{
-					tip.setNotice("Loading catalog...");
+					tip.setNotice(Cells.CATALOG_NOTICE);
 				}
 			}
-		}
-		if (clog == null && hiscore != null)
-		{
-			int[] totals = ClogHelper.summaryTotals(null, hiscore, unsyncedCatalog.result());
-			if (totals[0] >= 0) tip.setObtained(totals[0], totals[1]);
+			if (hiscore != null)
+			{
+				int[] totals = ClogHelper.summaryTotals(null, hiscore, unsyncedCatalog.result());
+				if (totals[0] >= 0) tip.setObtained(totals[0], totals[1]);
+			}
 		}
 		if (hiscore != null && hiscore.isRankDataAvailable())
 		{

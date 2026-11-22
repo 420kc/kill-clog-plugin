@@ -40,7 +40,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 	@Setter
 	private double ehb = -1;
 
-	private int[] weaponCounts = new int[PanelData.RAIDS.size()];
+	private int[] megarareCounts = new int[PanelData.RAIDS.size()];
 	@Nullable
 	private TooltipItemSprites superiorSprites;
 	private final int[] superiorCounts = new int[2];
@@ -180,7 +180,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 	public void setMegarares(int[] counts, ItemManager itemManager)
 	{
 		bossesSprite = itemSprite(ClogSummaryTooltip.TAB_SPRITES.getOrDefault("Bosses", -1), itemManager);
-		weaponCounts = counts;
+		megarareCounts = counts;
 		for (int i = 0; i < megarares.length; i++)
 		{
 			megarares[i] = itemSprite(PanelData.MEGARARE_ITEM_IDS[i], itemManager);
@@ -282,7 +282,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 			if (raidOut[i])
 			{
 				raids.add(new GameTile.Tile(PanelData.RAIDS.get(i).getTile(), megarares[i], raidCounts[i])
-					.opens(onOpenRaid, raid(i)).faint(weaponCounts[i] <= 0)
+					.opens(onOpenRaid, raid(i)).faint(megarareCounts[i] <= 0)
 					.named(PanelData.RAIDS.get(i).getMegarareName()).score(raidKills[i]));
 			}
 		}
