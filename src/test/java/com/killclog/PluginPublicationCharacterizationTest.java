@@ -1113,7 +1113,8 @@ public class PluginPublicationCharacterizationTest
 		order.verify(localClogCache).updateTotalsUpward(RSN, 5, 10);
 		order.verify(panel).setControls(any());
 		order.verify(localClogCache).consumeRenameNotice();
-		order.verify(chatNotifier).send(eq(ChatNotice.SYNC_RESULT), startsWith("Kill Clog followed your name change"));
+		order.verify(chatNotifier).send(ChatNotice.SYNC_RESULT,
+			"Kill Clog followed your name change from 'Old Name' - your Collection Log came along.");
 		order.verify(caCache).cacheResult(eq(RSN), anyLong(), any());
 		order.verify(localClogCache).serve(any());
 		order.verify(panel).setControls(any());

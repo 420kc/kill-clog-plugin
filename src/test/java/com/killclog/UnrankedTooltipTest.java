@@ -57,8 +57,8 @@ public class UnrankedTooltipTest
 		assertNull(rankText(tooltip(knownKills.toBuilder().kc(-1).build(), result(-1), true)));
 	}
 
-	// One look (Dylan, 2026-11-21): where a card has no value it writes "--", and for a player the hiscores answered
-	// without a rank it writes "Unranked", both in the cards' one muted grey, never in a number's white.
+	// One look: where a card has no value it writes "--", and for a player the hiscores answered without a rank it
+	// writes "Unranked", both in the cards' one muted grey, never in a number's white.
 	@Test
 	public void aMissingValueAndAnUnrankedPlayerReadOneWayOnEveryCard()
 	{

@@ -225,7 +225,7 @@ public class ClogPbsTest
 	{
 		// The first log, three times over: the Alchemical Hydra then Amoxliatl, clicked inside one tick. The Hydra's
 		// numbers land, Amoxliatl's land a cycle later, and only then does the Hydra draw, with Amoxliatl's time and
-		// kills in the game's own header; Amoxliatl draws the cycle after. 2.8.3 filed 0:30 under the Hydra.
+		// kills in the game's own header; Amoxliatl draws the cycle after. Read at the draw, 0:30 went under the Hydra.
 		sends(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT, 169);
 		landing = false;
 		sends(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT, 50);
@@ -250,7 +250,7 @@ public class ClogPbsTest
 	{
 		// The first log's Abyssal Sire then Amoxliatl: nothing lands for the first page, Amoxliatl's time lands in the
 		// cycle the first page draws, and Amoxliatl draws the cycle after. A page with the line and no record stands
-		// where the Sire does: it is sent nothing and is drawn showing the next page's time. 2.8.3 kept it there.
+		// where the Sire does: it is sent nothing and is drawn showing the next page's time, which it must not keep.
 		sends(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT, 50);
 		page("Alchemical Hydra", "Obtained: <col=ffff00>0/11</col>", "Personal Best: <col=ffffff>0:30.00</col>");
 		drawsNow(3);
@@ -263,8 +263,8 @@ public class ClogPbsTest
 	public void twoRaidsClickedInsideATickReadNothingAndEachReadsWhenClickedAlone()
 	{
 		// The second log, on the Raids tab: the Theatre of Blood then the Tombs of Amascut inside one tick. Both pages'
-		// numbers land in one cycle and both pages draw in it, the Theatre under the Tombs' counts. 2.8.3 read the
-		// Tombs' 19 Entry completions as the Theatre's.
+		// numbers land in one cycle and both pages draw in it, the Theatre under the Tombs' counts. Read at the draw,
+		// the Tombs' 19 Entry completions were the Theatre's.
 		sends(VarPlayerID.COLLECTION_CATEGORY_COUNT3, 5);
 		sends(VarPlayerID.COLLECTION_CATEGORY_COUNT2, 6);
 		sends(VarPlayerID.COLLECTION_CATEGORY_COUNT, 430);
