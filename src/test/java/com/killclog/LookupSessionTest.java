@@ -92,6 +92,51 @@ public class LookupSessionTest
 	}
 
 	@Test
+	public void yourGameReadCombatAchievementsReachYourLookupButNeverALeagueOne() throws Exception
+	{
+		// The tiers this client reads from the game are the main game's: a League view of you has none to take.
+		for (boolean inLeague : new boolean[]{false, true})
+		{
+			HiscoreService hiscores = org.mockito.Mockito.mock(HiscoreService.class);
+			org.mockito.Mockito.when(hiscores.lookup(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any()))
+				.thenReturn(new CompletableFuture<>());
+			org.mockito.Mockito.when(hiscores.lookupLeague("Me")).thenReturn(new CompletableFuture<>());
+			ClogService clogs = org.mockito.Mockito.mock(ClogService.class);
+			LocalClogCache leagueLog = org.mockito.Mockito.mock(LocalClogCache.class);
+			org.mockito.Mockito.when(clogs.lookupLocal(leagueLog, "Me")).thenReturn(new CompletableFuture<>());
+			RuneProfileService runeProfile = org.mockito.Mockito.mock(RuneProfileService.class);
+			CombatAchievementResult game = ca(3);
+			org.mockito.Mockito.when(runeProfile.own("Me")).thenReturn(game);
+			LookupSession.Listener listener = org.mockito.Mockito.mock(LookupSession.Listener.class);
+			LookupSession session = new LookupSession(hiscores, clogs, runeProfile,
+				org.mockito.Mockito.mock(KillclogService.class), new KillClogConfig()
+				{
+				}, listener);
+			if (inLeague)
+			{
+				session.readLeague("demonic-pacts", leagueLog);
+			}
+			SwingUtilities.invokeAndWait(() ->
+			{
+				session.start("Me", "Me", AccountType.REGULAR);
+				session.refreshLocalCa("Me", "Me");
+			});
+			if (inLeague)
+			{
+				assertNull(session.getCaResult());
+				org.mockito.Mockito.verify(listener, org.mockito.Mockito.never()).onCaResult(org.mockito.ArgumentMatchers.any(),
+					org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyBoolean(), org.mockito.ArgumentMatchers.anyInt());
+			}
+			else
+			{
+				assertSame(game, session.getCaResult());
+				org.mockito.Mockito.verify(listener).onCaResult(org.mockito.ArgumentMatchers.eq("Me"),
+					org.mockito.ArgumentMatchers.same(game), org.mockito.ArgumentMatchers.eq(true), org.mockito.ArgumentMatchers.anyInt());
+			}
+		}
+	}
+
+	@Test
 	public void localRefreshPreservesStatsCaAndComparisonWithoutStartingLookups() throws Exception
 	{
 		LookupTestFixture fixture = new LookupTestFixture();
