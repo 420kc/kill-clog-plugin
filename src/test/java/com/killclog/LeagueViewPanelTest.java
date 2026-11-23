@@ -119,6 +119,11 @@ public class LeagueViewPanelTest
 			// Their Collection Log card names them as every other card does, by the name looked up.
 			assertEquals("Friend hasn't synced a Collection Log",
 				field(panel.clogInfoLabel().createToolTip(), "notice", String.class));
+			// While TempleOSRS has not answered for them, the log is not missing, only not here yet.
+			when(clogs.templeUnanswered("Friend")).thenReturn(true);
+			assertEquals("Friend's Collection Log hasn't loaded",
+				field(panel.clogInfoLabel().createToolTip(), "notice", String.class));
+			when(clogs.templeUnanswered("Friend")).thenReturn(false);
 			// Were that name your own, the same card would offer setup, by the name looked up.
 			panel.setLoggedInPlayer("Friend", AccountType.REGULAR);
 			assertTrue(field(panel.clogInfoLabel().createToolTip(), "firstTimeSetup", Boolean.class));
@@ -442,8 +447,7 @@ public class LeagueViewPanelTest
 		// A login looks you up at once; the game's tiers are read only once the world has settled, some ticks on.
 		CombatAchievementResult game = CombatAchievementResult.fromGame(
 			java.util.Map.of(CombatAchievementTier.EASY, 5), java.util.Map.of(CombatAchievementTier.EASY, 33), null);
-		when(runeProfile.lookup("My Name")).thenReturn(CompletableFuture.completedFuture(null),
-			CompletableFuture.completedFuture(game));
+		when(runeProfile.lookup("My Name")).thenReturn(CompletableFuture.completedFuture(null));
 		SwingUtilities.invokeAndWait(() ->
 		{
 			panel.setLoggedInPlayer("My Name", AccountType.REGULAR);
@@ -455,11 +459,14 @@ public class LeagueViewPanelTest
 		});
 		assertNull("nothing read from the game yet", session.getCaResult());
 
+		when(runeProfile.own("My Name")).thenReturn(game);
 		SwingUtilities.invokeAndWait(() -> panel.onOwnCaRead("My Name"));
 		SwingUtilities.invokeAndWait(() ->
 		{
 		});
 		assertSame("the Combat Summary reads the lookup's", game, session.getCaResult());
+		// The reading is this client's own: RuneProfile was asked once, by the lookup, and not again for this.
+		verify(runeProfile).lookup("My Name");
 
 		// Looking at someone else, your own reading is not theirs.
 		when(runeProfile.lookup("Friend")).thenReturn(new CompletableFuture<>());

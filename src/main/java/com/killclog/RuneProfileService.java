@@ -163,9 +163,9 @@ public class RuneProfileService
 		});
 	}
 
-	/** The logged-in player's own tiers as this client holds them; null for anyone else, or with none held. */
+	/** The logged-in player's own tiers as this client holds them, asking nobody; null for anyone else, or with none held. */
 	@Nullable
-	private CombatAchievementResult own(String playerName)
+	CombatAchievementResult own(String playerName)
 	{
 		return localCaCache != null ? localCaCache.getCached(playerName) : null;
 	}

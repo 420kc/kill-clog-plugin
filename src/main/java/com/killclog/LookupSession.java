@@ -340,14 +340,17 @@ public class LookupSession
 	}
 
 	/**
-	 * Take your own Combat Achievements as the game has them now, with no new lookup. A login looks you up at once,
-	 * while the game's tiers are read only once the world has settled, so that lookup began with last session's.
+	 * Take your own Combat Achievements as the game has them now, with no new lookup and no request to any site. A
+	 * login looks you up at once, while the game's tiers are read only once the world has settled, so that lookup
+	 * began with last session's.
 	 */
 	void refreshLocalCa(String player, @Nullable String localRsn)
 	{
-		if (showsYou(player, localRsn))
+		CombatAchievementResult own = showsYou(player, localRsn) ? fanout.ownCa(player) : null;
+		if (own != null)
 		{
-			askCa(player, true, fanout.version());
+			caResult = own;
+			listener.onCaResult(player, own, true, fanout.version());
 		}
 	}
 

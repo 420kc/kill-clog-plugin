@@ -133,6 +133,13 @@ final class LookupFanout
 			});
 	}
 
+	/** Your own Combat Achievements as this client holds them, with no request made; a League has none. */
+	@Nullable
+	CombatAchievementResult ownCa(String player)
+	{
+		return league != null ? null : runeProfileService.own(player);
+	}
+
 	/**
 	 * The hiscores. A null answer means no such player, which the caller words; a failure goes to {@code onError}. Each
 	 * reaches the Swing thread only while its lookup is current.
