@@ -15,7 +15,7 @@ import net.runelite.client.util.QuantityFormatter;
 /**
  * Combat Summary tooltip on the combat level cell: the combat level at the title's right, the prestige cape, Dizana's
  * gear and the Combat Achievements reward under it, the band, then a scroll of PvM (its rows, Combat Achievements and
- * tiles), the raids' tiles, Slayer and its superiors, and PvP.
+ * tiles), the raids' completions and tiles, Slayer and its superiors, and PvP.
  */
 public class PvmSummaryTooltip extends TitleTooltip
 {
@@ -287,7 +287,10 @@ public class PvmSummaryTooltip extends TitleTooltip
 					.named(PanelData.RAIDS.get(i).getMegarareName()).score(raidKills[i]));
 			}
 		}
-		body.titled("Raids").add(GameTile.grid(raids));
+		// Their completions together lead the tiles, as Total Kills leads PvM's: every mode the hiscores carry, which is
+		// none of the Entry ones.
+		body.titled("Raids").add(CardBody.line("Raid Completions: ", scoreText(Arrays.stream(raidKills).sum())))
+			.add(CardBody.gap(SECTION_GAP)).add(GameTile.grid(raids));
 		// Slayer: XP and Rank from the hiscores, then clog progress when a synced log is known.
 		body.titled("Slayer")
 			.add(CardBody.line("XP: ", scoreText(slayerXp)))

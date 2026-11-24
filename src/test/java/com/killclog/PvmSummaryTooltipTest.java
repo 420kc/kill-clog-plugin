@@ -794,7 +794,9 @@ public class PvmSummaryTooltipTest
 		PvmSummaryTooltip dormant = new PvmSummaryTooltip();
 		dormant.setData(0, 0, 0, PanelData.bossCount(), null, 0);
 		assertTrue(PanelData.tfaListed());
-		assertEquals(4, raidTiles(render(painted(dormant))).size());
+		// The whole card, as Copy holds it: Raid Completions stands over the tiles, so the second pair starts above the
+		// card's bottom edge and ends under it.
+		assertEquals(4, wholeRaidTiles(dormant).size());
 	}
 
 	@Test
@@ -813,9 +815,11 @@ public class PvmSummaryTooltipTest
 			Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap(), 0, 0, 0, -1), null);
 		List<HiscoreSkill> opened = new ArrayList<>();
 		out.setOnOpenRaid((press, raid) -> opened.add(raid));
-		// No most killed boss and no CA tier: no PvM tiles, so every wide tile is a raid's.
-		List<Point> raids = TestViews.tiles(render(painted(out)), GameTile.PAGE_WIDTH, GameTile.HEIGHT);
+		// No most killed boss: Bosses is the one PvM tile, and the raids' four follow it.
+		List<Point> raids = wholeRaidTiles(out);
 		assertEquals(4, raids.size());
+		// The card as it opens, for the press: its second pair of tiles shows from its top edge down.
+		painted(out);
 		assertEquals(raids.get(0).x, raids.get(2).x);
 		// Its popup comes with the launch-day update's boss tile: before the panel lists the raid, even a client whose
 		// RuneLite knows it opens nothing, rather than a popup with no data asking a synced player to set up.
@@ -928,7 +932,16 @@ public class PvmSummaryTooltipTest
 		graphics.dispose();
 		return image;
 	}
-	/** The first raid tile's top-left corner. */
+	/**
+	 * The raid tiles of a card with one PvM tile, read off the whole card as Copy holds it: every tile between Bosses,
+	 * which leads them, and the five PvP tiles that close the card.
+	 */
+	private static List<Point> wholeRaidTiles(PvmSummaryTooltip tip)
+	{
+		List<Point> tiles = TestViews.tiles(TooltipController.cardImage(tip));
+		return tiles.subList(1, tiles.size() - PanelData.PVP_ACTIVITIES.length);
+	}
+
 	/** The raid tiles: every tile below the PvM tiles' row, which leads the card's tiles. */
 	private static List<Point> raidTiles(BufferedImage image)
 	{
@@ -1007,6 +1020,43 @@ public class PvmSummaryTooltipTest
 		int[] raidKills = TestViews.field(tip, "raidKills");
 		assertEquals(189, raidKills[0]);
 		assertEquals(2, raidKills[1]);
+	}
+
+	// Raid Completions leads the Raids section: every raid's kills in every mode the hiscores carry, in a number's white;
+	// a player with none, and the panel before any lookup, read the cards' muted "--".
+	@Test
+	public void raidCompletionsTotalEveryRaidAndModeUnderTheRaidsHeader()
+	{
+		Map<String, Integer> kills = new HashMap<>();
+		kills.put(HiscoreSkill.CHAMBERS_OF_XERIC.getName(), 1_183);
+		kills.put(HiscoreSkill.CHAMBERS_OF_XERIC_CHALLENGE_MODE.getName(), 6);
+		kills.put(HiscoreSkill.THEATRE_OF_BLOOD_HARD_MODE.getName(), 2);
+		kills.put(HiscoreSkill.TOMBS_OF_AMASCUT.getName(), 40);
+		kills.put(HiscoreSkill.TOMBS_OF_AMASCUT_EXPERT.getName(), 29);
+		// A boss that is no raid stays out of it.
+		kills.put(HiscoreSkill.VORKATH.getName(), 900);
+		java.awt.Font small = net.runelite.client.ui.FontManager.getRunescapeSmallFont();
+		PvmSummaryTooltip tip = card();
+		tip.setRaids(TestViews.hiscore(AccountType.REGULAR, kills, Collections.emptyMap(), Collections.emptyMap(),
+			Collections.emptyMap(), Collections.emptyMap(), 0, 0, 0, -1), null);
+		BufferedImage image = TooltipController.cardImage(tip);
+		Point label = TestViews.textAt(image, "Raid Completions: ", small, NativeTooltip.labelColor);
+		Point value = TestViews.textAt(image, "1,260", small, NativeTooltip.valueColor);
+		assertNotNull("the label", label);
+		assertNotNull("1,183 + 6 + 2 + 40 + 29", value);
+		assertEquals("the total on its label's line", label.y, value.y);
+
+		PvmSummaryTooltip none = card();
+		none.setRaids(TestViews.hiscore(AccountType.REGULAR, Collections.singletonMap(HiscoreSkill.VORKATH.getName(), 900),
+			Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap(), 0, 0, 0, -1), null);
+		BufferedImage bare = TooltipController.cardImage(none);
+		Point bareLabel = TestViews.textAt(bare, "Raid Completions: ", small, NativeTooltip.labelColor);
+		assertNotNull(bareLabel);
+		// The label's own line, cut out of the card: its value is the muted "--" and no number.
+		int ascent = new java.awt.Canvas().getFontMetrics(small).getAscent();
+		BufferedImage line = bare.getSubimage(0, bareLabel.y - ascent - 1, bare.getWidth(), ascent + 4);
+		assertNotNull("a muted -- on the label's line", TestViews.textAt(line, "--", small, TitleTooltip.MUTED_GRAY));
+		assertNull("and no 0", TestViews.textAt(line, "0", small, NativeTooltip.valueColor));
 	}
 
 	@Test
