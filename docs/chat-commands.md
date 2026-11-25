@@ -127,6 +127,7 @@ This chart lists the 125 catalog pages checked for 2.3.2. Newly added game pages
 | `ocean encounters` | `ocean` |
 | `pest control` | `pc` |
 | `phantom muspah` | `muspah` |
+| `prison of r un` | `prison`, `prison of raeun`, `raeun` |
 | `random events` | `events`, `random` |
 | `revenants` | `revs` |
 | `rogues den` | `rogues` |

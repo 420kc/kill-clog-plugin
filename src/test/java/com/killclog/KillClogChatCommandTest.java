@@ -14,6 +14,15 @@ import static org.junit.Assert.*;
 public class KillClogChatCommandTest
 {
 	@Test
+	public void aLigatureIsTypedAsItsTwoLetters()
+	{
+		// The game's first page name off the keyboard: Prison of R(ae)un. Typed either way it is the same words.
+		assertEquals("prison of raeun", KillClogChatCommand.normalize("Prison of R\u00e6un"));
+		assertEquals("prison of raeun", KillClogChatCommand.normalize("PRISON OF R\u00c6UN"));
+		assertEquals("prison of raeun", KillClogChatCommand.normalize("prison of raeun"));
+	}
+
+	@Test
 	public void testKcReceivedTextKeepsExactCounts()
 	{
 		assertEquals("Elder venator fang received on 421 kc",

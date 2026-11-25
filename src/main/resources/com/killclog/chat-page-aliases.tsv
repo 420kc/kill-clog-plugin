@@ -51,6 +51,9 @@ schematics	lost_schematics
 monkeys	monkey_backpacks
 mlm	motherlode_mine
 ocean	ocean_encounters
+prison	prison_of_r_un
+raeun	prison_of_r_un
+prison of raeun	prison_of_r_un
 random	random_events
 events	random_events
 revs	revenants

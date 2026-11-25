@@ -194,7 +194,7 @@ class KillClogChatCommand
 	/* package */ static String normalize(String s)
 	{
 		return s.toLowerCase(Locale.ROOT).replace("'", "").replace("\u2019", "").replace(":", "")
-			.replaceAll("[^a-z0-9]+", " ").trim();
+			.replace("\u00e6", "ae").replaceAll("[^a-z0-9]+", " ").trim();
 	}
 
 	/** Whether the text opens with this word and a space after it, in any case. */

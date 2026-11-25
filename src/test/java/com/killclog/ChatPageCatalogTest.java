@@ -33,7 +33,7 @@ public class ChatPageCatalogTest
 	public void everyCatalogPageResolvesWithoutAPanelCell()
 	{
 		Set<String> pages = pages();
-		assertEquals(126, pages.size());
+		assertEquals(127, pages.size());
 		for (String page : pages)
 		{
 			assertEquals(page, KillClogChatCommand.resolvePage(page.replace('_', ' '), pages).categoryKey);
