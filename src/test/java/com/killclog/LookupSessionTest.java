@@ -107,6 +107,9 @@ public class LookupSessionTest
 			RuneProfileService runeProfile = org.mockito.Mockito.mock(RuneProfileService.class);
 			CombatAchievementResult game = ca(3);
 			org.mockito.Mockito.when(runeProfile.own("Me")).thenReturn(game);
+			// RuneProfile hasn't answered: an unstubbed mock answers at once with nothing, and that answer raced the
+			// asserts below from the Swing thread.
+			org.mockito.Mockito.when(runeProfile.lookup("Me")).thenReturn(new CompletableFuture<>());
 			LookupSession.Listener listener = org.mockito.Mockito.mock(LookupSession.Listener.class);
 			LookupSession session = new LookupSession(hiscores, clogs, runeProfile,
 				org.mockito.Mockito.mock(KillclogService.class), new KillClogConfig()
@@ -120,6 +123,10 @@ public class LookupSessionTest
 			{
 				session.start("Me", "Me", AccountType.REGULAR);
 				session.refreshLocalCa("Me", "Me");
+			});
+			// Anything the lookup queued for the Swing thread has run before the card is read.
+			SwingUtilities.invokeAndWait(() ->
+			{
 			});
 			if (inLeague)
 			{

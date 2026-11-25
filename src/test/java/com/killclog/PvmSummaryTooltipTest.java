@@ -1033,6 +1033,8 @@ public class PvmSummaryTooltipTest
 		kills.put(HiscoreSkill.THEATRE_OF_BLOOD_HARD_MODE.getName(), 2);
 		kills.put(HiscoreSkill.TOMBS_OF_AMASCUT.getName(), 40);
 		kills.put(HiscoreSkill.TOMBS_OF_AMASCUT_EXPERT.getName(), 29);
+		// The newest raid counts by the hiscores' row name, before RuneLite has a name for it.
+		kills.put("The Fractured Archive", 3);
 		// A boss that is no raid stays out of it.
 		kills.put(HiscoreSkill.VORKATH.getName(), 900);
 		java.awt.Font small = net.runelite.client.ui.FontManager.getRunescapeSmallFont();
@@ -1041,9 +1043,9 @@ public class PvmSummaryTooltipTest
 			Collections.emptyMap(), Collections.emptyMap(), 0, 0, 0, -1), null);
 		BufferedImage image = TooltipController.cardImage(tip);
 		Point label = TestViews.textAt(image, "Raid Completions: ", small, NativeTooltip.labelColor);
-		Point value = TestViews.textAt(image, "1,260", small, NativeTooltip.valueColor);
+		Point value = TestViews.textAt(image, "1,263", small, NativeTooltip.valueColor);
 		assertNotNull("the label", label);
-		assertNotNull("1,183 + 6 + 2 + 40 + 29", value);
+		assertNotNull("1,183 + 6 + 2 + 40 + 29 + 3", value);
 		assertEquals("the total on its label's line", label.y, value.y);
 
 		PvmSummaryTooltip none = card();
