@@ -176,6 +176,13 @@ class KillClogChatCommand
 		return null;
 	}
 
+	/** A page as the game names it; its key spelled out ("Prison Of R Un") only until the game's log is read. */
+	private static String pageLabel(ClogTarget target, @Nullable ClogIndex index)
+	{
+		String named = index != null && target.boss == null ? index.pageName(target.categoryKey) : null;
+		return named != null ? named : target.label;
+	}
+
 	/** beginner_treasure_trails -> Beginner Treasure Trails. */
 	private static String titleCase(String categoryKey)
 	{
@@ -371,7 +378,7 @@ class KillClogChatCommand
 
 		String rsn = resolveTargetRsn(chatMessage);
 		ClogTarget known = target;
-		String label = known != null ? known.label : "Collection Log";
+		String label = known != null ? pageLabel(known, index) : "Collection Log";
 		lookup(rsn).whenComplete((cl, error) ->
 		{
 			if (error != null)
@@ -409,7 +416,7 @@ class KillClogChatCommand
 			replaceText(chatMessage, "Collection Log page not recognized; use its full name or a listed alias");
 			return;
 		}
-		final String label = target.label;
+		final String label = pageLabel(target, index);
 		final String categoryKey = target.categoryKey;
 		PageItems page = pageItems(cl, categoryKey, index != null ? index.categoryItems() : null);
 		final List<Integer> totalList = page.total;

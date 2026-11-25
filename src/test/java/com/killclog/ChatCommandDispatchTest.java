@@ -58,6 +58,34 @@ public class ChatCommandDispatchTest
 	}
 
 	@Test
+	public void aPageIsNamedAsTheGameNamesItHoweverItIsTyped() throws Exception
+	{
+		ClogResult result = result(Map.of("prison_of_r_un", List.of(item(1, 1)), "zulrah", List.of(item(1, 1))),
+			Map.of("prison_of_r_un", List.of(1, 2), "zulrah", List.of(1, 2)));
+		Harness harness = new Harness(result);
+		// Before the game's log is read the page has only its key to go by.
+		assertEquals("Prison Of R Un: 1/2 <img=101>", harness.run("!kclog prison"));
+		ClogIndex index = new ClogIndex();
+		TestViews.publish(index, result.getCategoryItems(), Map.of(), Map.of(), Map.of(),
+			Map.of("prison_of_r_un", "Prison of R\u00e6un", "zulrah", "Zulrah's page"));
+		TestViews.inject(harness.command, index);
+		for (String typed : new String[]{"prison", "raeun", "prison of raeun", "Prison of R\u00e6un", "prison of r un"})
+		{
+			assertEquals(typed, "Prison of R\u00e6un: 1/2 <img=101>", harness.run("!kclog " + typed));
+		}
+		assertEquals("Prison of R\u00e6un: 1/2 missing <img=102>", harness.run("!missing prison"));
+		// A boss's page keeps the name the hiscores give the boss.
+		HiscoreService hiscores = org.mockito.Mockito.mock(HiscoreService.class);
+		HiscoreResult kills = org.mockito.Mockito.mock(HiscoreResult.class);
+		org.mockito.Mockito.when(kills.getKc(org.mockito.ArgumentMatchers.any())).thenReturn(57);
+		org.mockito.Mockito.when(hiscores.lookup("Other player", null)).thenReturn(CompletableFuture.completedFuture(kills));
+		set(harness.command, "hiscoreService", hiscores);
+		assertEquals("Zulrah: 57 kc, 1/2 <img=101>", harness.run("!kclog zulrah"));
+		harness.result = null;
+		assertEquals("Prison of R\u00e6un: no clog data", harness.run("!kclog prison"));
+	}
+
+	@Test
 	public void unknownMissingAndCompleteStatesAreDistinct() throws Exception
 	{
 		Harness harness = new Harness(pets());
