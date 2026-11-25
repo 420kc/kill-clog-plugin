@@ -93,6 +93,7 @@ public class SkillClogCatalogTest
 			"category|Colossal Wyrm Agility Course|colossal_wyrm_agility",
 			"category|Hallowed Sepulchre|hallowed_sepulchre",
 			"category|Monkey Backpacks|monkey_backpacks",
+			"category|Prison of R\u00e6un|prison_of_r_un",
 			"category|Rooftop Agility|rooftop_agility",
 			"items|Underwater|21649"),
 			TestViews.specSignature(Skill.AGILITY));
