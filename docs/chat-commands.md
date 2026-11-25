@@ -45,7 +45,7 @@ Use either column after `!kclog` or `!missing`. For example, `!kclog mixology` a
 
 Boss-specific names can also show that encounter's KC. `!kclog rex`, `!kclog prime`, and `!kclog dks` share the Dagannoth Kings items; only the individual boss names select a specific KC. The same applies to shared wilderness, raid-mode, and Nightmare pages.
 
-This chart lists the 125 catalog pages checked for 2.3.2. Newly added game pages also resolve by full name once the catalog loads. “Full name” means no additional shorthand is defined.
+This chart lists the 127 catalog pages. Newly added game pages also resolve by full name once the catalog loads. “Full name” means no additional shorthand is defined.
 
 <!-- BEGIN GENERATED PAGE TABLE -->
 | Page name | Also accepts |
