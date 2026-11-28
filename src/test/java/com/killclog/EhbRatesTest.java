@@ -48,6 +48,19 @@ public class EhbRatesTest
 		}
 	}
 
+	/** Temple rated both after they joined the hiscores (its table of 2026-10-28); a row left at 0 gives no hours. */
+	@Test
+	public void testTheFracturedArchiveAndMadAngelAwardHours()
+	{
+		for (String boss : new String[]{"The Fractured Archive", "Mad Angel"})
+		{
+			Map<String, Integer> kcs = new HashMap<>();
+			kcs.put(boss, 100);
+			assertTrue(boss + " gives a main no EHB", EhbRates.compute(result(AccountType.REGULAR, kcs), null) > 0);
+			assertTrue(boss + " gives an ironman no EHB", EhbRates.compute(result(AccountType.IRONMAN, kcs), null) > 0);
+		}
+	}
+
 	@Test
 	public void testNoUnknownBossesInRates()
 	{

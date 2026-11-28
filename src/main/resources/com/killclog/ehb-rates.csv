@@ -1,6 +1,6 @@
 # EHB rates by TempleOSRS (templeosrs.com)
 # source: https://templeosrs.com/api/rates/ehb_rates.php
-# rates_last_updated: 2026-06-30 14:00:00
+# rates_last_updated: 2026-10-28 21:00:00
 # boss,main,ironman
 Abyssal Sire,50,44
 Alchemical Hydra,30,29
@@ -36,9 +36,9 @@ Kraken,100,90
 Kree'Arra,40,30
 K'ril Tsutsaroth,65,32
 Lunar Chests,18,18
-Mad Angel,0,0
+Mad Angel,55,50
 Mimic,0,50
-Maggot King,33,33
+Maggot King,31,29
 Nex,13,15
 Nightmare,14,11
 Phosani's Nightmare,9.6,9.3
@@ -52,7 +52,7 @@ Skotizo,45,38
 Sol Heredit,2.7,2.8
 Spindel,55,50
 Tempoross,0,0
-The Fractured Archive,0,0
+The Fractured Archive,4,4
 The Gauntlet,10,10
 The Corrupted Gauntlet,7.2,7.2
 The Hueycoatl,9,9
